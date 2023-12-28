@@ -1,5 +1,8 @@
 # Oracle DBA
 ![My Badge](/doc/badge.svg)
 
->Here is you can find different tools for "Oracle Apps dba" powered by Borys Holovko
->
+Here is you can find different tools for "Oracle Apps dba" powered by Borys Holovko
+## Contents:
+  - automation
+  - tools and tricks
+  - work notes
