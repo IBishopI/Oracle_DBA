@@ -1,0 +1,29 @@
+###############################################################################################
+CPU utilization:
+###############################################################################################
+
+1. Check active backup
+2. top
+3. select:
+
+set linesize 150
+column machine format a15
+column username format a10 tru
+column program format a20 tru
+set verify off
+set head off
+select 'SID: '||s.sid||' OS PID:'||spid||chr(10)
+||'User: '||s.username||' OS User:'||osuser||chr(10)
+||'Machine: '||s.machine||' Program: '||s.program ||chr(10)
+||'Module: '||MODULE||chr(10)
+||'SQL ADDR: ' ||sql_address||chr(10)
+||'Idle: '||floor(last_call_et/3600)||':'||
+        floor(mod(last_call_et,3600)/60)||':'||
+        mod(mod(last_call_et,3600),60) ||chr(10)
+||'Action: '||action||chr(10)
+||'Process: '||Process||chr(10)
+||'Status: '|| s.status
+from v$session s ,v$process p
+where s.paddr=p.addr and p.spid=&pid;
+
+4. Check long running reqests

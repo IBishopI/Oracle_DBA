@@ -1,0 +1,27 @@
+cd /etc/yum.repos.d && wget http://public-yum.oracle.com/public-yum-el5.repo; 
+wget http://public-yum.oracle.com/RPM-GPG-KEY-oracle-el5 -O /etc/pki/rpm-gpg/RPM-GPG-KEY-oracle
+gpg --quiet --with-fingerprint /etc/pki/rpm-gpg/RPM-GPG-KEY-oracle
+yum groupinstall "Development Tools"
+rpm -Uvh http://packages.sw.be/rpmforge-release/rpmforge-release-0.5.3-1.el5.rf.i386.rpm
+rpm -Uvh http://dl.fedoraproject.org/pub/epel/5/i386/epel-release-5-4.noarch.rpm
+yum install ncurses-devel
+yum install kernel-uek
+
+
+
+rpm -q --qf '%{NAME}-%{VERSION}-%{RELEASE} (%{ARCH})\n' binutils compat-libstdc++-33 elfutils-libelf elfutils-libelf-devel gcc gcc-c++ glibc glibc-common glibc-devel glibc-headers ksh libaio libaio-devel libgcc libstdc++ libstdc++-devel make sysstat unixODBC unixODBC-devel openmotif21
+
+
+DAEMON_OPTIONS(`Port=smtp,Addr=127.0.0.1, Name=MTA')dnl  - change to -  DAEMON_OPTIONS(`Port=smtp, Name=MTA')
+LOCAL_DOMAIN(`localhost.localdomain')dnl                 - change to -  LOCAL_DOMAIN(`emailjunkie.org')
+dnl MASQUERADE_AS(`mydomain.com')dnl                     - change to -  MASQUERADE_AS(`emailjunkie.org')
+dnl FEATURE(masquerade_envelope)dnl                      - change to -  FEATURE(`masquerade_envelope')
+dnl define(`SMART_HOST',`smtp.your.provider')            - change to -  define(`SMART_HOST',`your.trusted.smtp.relay')
+FEATURE(`allmasquerade')
+
+
+
+cd /etc/yum.repos.d && wget http://public-yum.oracle.com/public-yum-el5.repo; 
+wget http://public-yum.oracle.com/RPM-GPG-KEY-oracle-el5 -O /etc/pki/rpm-gpg/RPM-GPG-KEY-oracle
+gpg --quiet --with-fingerprint /etc/pki/rpm-gpg/RPM-GPG-KEY-oracle
+yum install oracle-validated

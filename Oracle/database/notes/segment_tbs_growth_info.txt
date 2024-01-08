@@ -1,0 +1,68 @@
+#################################################################
+Segment/tablespace growth details
+#################################################################
+column "Percent of Total Disk Usage" justify right format 999.99
+column "Space Used (MB)" justify right format 9,999,999.99
+column "Total Object Size (MB)" justify right format 9,999,999.99
+set linesize 150
+set pages 80
+set feedback off
+set line 5000
+column "SEGMENT_NAME" justify left format A30
+column "TABLESPACE_NAME" justify left format A30
+select * from (select c.TABLESPACE_NAME,c.segment_name,to_char(end_interval_time, 'MM/DD/YY') mydate, sum(space_used_delta) / 1024 / 1024 "Space used (MB)", avg(c.bytes) / 1024 / 1024 "Total Object Size (MB)",
+round(sum(space_used_delta) / sum(c.bytes) * 100, 2) "Percent of Total Disk Usage"
+from
+dba_hist_snapshot sn,
+dba_hist_seg_stat a,
+dba_objects b,
+dba_segments c
+where begin_interval_time > trunc(sysdate) - 10
+and sn.snap_id = a.snap_id
+and b.object_id = a.obj#
+and b.owner = c.owner
+and b.object_name = c.segment_name
+and c.segment_name = 'S_PARTY'
+group by c.TABLESPACE_NAME,c.segment_name,to_char(end_interval_time, 'MM/DD/YY')
+order by c.TABLESPACE_NAME,c.segment_name,to_date(mydate, 'MM/DD/YY'));
+set pages 80
+set feedback off
+column "OBJECT_NAME" justify left format A30
+column "SUBOBJECT_NAME" justify left format A30
+column "OBJECT_TYPE" justify left format A30
+column "Tablespace Name" justify left format A30
+set line 5000
+SELECT o.OWNER , o.OBJECT_NAME , o.SUBOBJECT_NAME , o.OBJECT_TYPE ,
+t.NAME "Tablespace Name", s.growth/(1024*1024) "Growth in MB",
+(SELECT sum(bytes)/(1024*1024)
+FROM dba_segments
+WHERE segment_name=o.object_name) "Total Size(MB)"
+FROM DBA_OBJECTS o,
+( SELECT TS#,OBJ#,
+SUM(SPACE_USED_DELTA) growth
+FROM DBA_HIST_SEG_STAT
+GROUP BY TS#,OBJ#
+HAVING SUM(SPACE_USED_DELTA) > 0
+ORDER BY 2 DESC ) s,
+v$tablespace t
+WHERE s.OBJ# = o.OBJECT_ID
+AND s.TS#=t.TS#
+and t.NAME='SYSTEM'
+ORDER BY 6 DESC;
+/
+— List object growth over last N days, sorted by growth desc
+set feedback on
+select * from (select c.TABLESPACE_NAME,c.segment_name "Object Name",b.object_type,
+sum(space_used_delta) / 1024 / 1024 "Growth (MB)"
+from dba_hist_snapshot sn,
+dba_hist_seg_stat a,
+dba_objects b,
+dba_segments c
+where begin_interval_time > trunc(sysdate)-&days_back
+and sn.snap_id = a.snap_id
+and b.object_id = a.obj#
+and b.owner = c.owner
+and b.object_name = c.segment_name
+and c.TABLESPACE_NAME='SYSTEM'
+group by c.TABLESPACE_NAME,c.segment_name,b.object_type)
+order by 3 asc;

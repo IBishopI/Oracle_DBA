@@ -1,0 +1,77 @@
+#################################################################
+Blocking sessions:
+#################################################################
+alter session set nls_date_format='dd-MON-rr hh24:mi:ss';
+
+--Check sessions which lock each other:
+---------------------------------------
+
+SELECT s1.username || '@' || s1.machine
+    || ' ( SID=' || s1.sid || ' )  is blocking '
+    || s2.username || '@' || s2.machine || ' ( SID=' || s2.sid || ' ) ' AS blocking_status
+    FROM v$lock l1, v$session s1, v$lock l2, v$session s2
+    WHERE s1.sid=l1.sid AND s2.sid=l2.sid
+    AND l1.BLOCK=1 AND l2.request > 0
+    AND l1.id1 = l2.id1
+    AND l1.id2 = l2.id2;
+
+
+--check detailed info acording to SIDs:
+---------------------------------------
+
+set lines 150 pages 999
+column machine format a15
+column username format a10 tru
+column program format a20 tru
+set verify off
+set head off
+select 'SID,SERIAL#: '||s.sid||','||s.serial#||' OS PID:'||spid||chr(10)||'User: '||s.username||' OS User:'||osuser||chr(10)||'Machine:
+'||s.machine||' Program: '||s.program ||chr(10)
+||'Module: '||MODULE||chr(10)
+||'SQL ADDR: ' ||sql_address||chr(10)
+||'Idle: '||floor(last_call_et/3600)||':'||
+floor(mod(last_call_et,3600)/60)||':'||
+mod(mod(last_call_et,3600),60) ||chr(10)
+||'Action: '||action||chr(10)
+||'Last Activity (mins): '||round (s.LAST_CALL_ET/60,0)||chr(10)
+||'SQL_EXEC_START: '||s.SQL_EXEC_START||chr(10)
+||'Event: '||s.event||chr(10)
+||'Status: '|| s.status||chr(10)
+||'SQL_ID: '||s.sql_id||chr(10)
+||'----------------------------------'
+from v$session s ,v$process p
+where s.paddr=p.addr and s.sid in ('228','433');
+
+
+
+
+Locks:
+--------------------------------------
+col U_NAME for a10
+col OBJ_OWNER for a10
+col object_type for a10
+col object_name for a30
+col osuser for a10
+set lines 200 pages 999
+SELECT username U_NAME, owner OBJ_OWNER,
+object_name, object_type, s.osuser,
+DECODE(l.block,
+  0, 'Not Blocking',
+  1, 'Blocking',
+  2, 'Global') STATUS,
+  DECODE(v.locked_mode,
+    0, 'None',
+    1, 'Null',
+    2, 'Row-S (SS)',
+    3, 'Row-X (SX)',
+    4, 'Share',
+    5, 'S/Row-X (SSX)',
+    6, 'Exclusive', TO_CHAR(lmode)
+  ) MODE_HELD,
+s.SID||','||s.SERIAL# as "SID,SERIAL"
+FROM gv$locked_object v, dba_objects d,
+gv$lock l, gv$session s
+WHERE v.object_id = d.object_id
+AND (v.object_id = l.id1)
+AND v.session_id = s.sid and OBJECT_NAME like '%&part_of_object_name%'
+ORDER BY username, session_id;

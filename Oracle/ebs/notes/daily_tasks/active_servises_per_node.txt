@@ -1,0 +1,5 @@
+#################################################################
+Application services:
+#################################################################
+select NODE_NAME,SUPPORT_CP C,SUPPORT_FORMS F,SUPPORT_WEB W,
+SUPPORT_ADMIN A,SUPPORT_DB D from apps.fnd_nodes;

@@ -1,0 +1,10 @@
+###############################################################################################
+Pending Jobs:
+###############################################################################################
+set lines 200 pages 9999
+
+select /*+ RULE */ request_id||' '||substr(program,1,50)||': '||to_char(REQUESTED_START_DATE, 'mm/dd/yyyy hh24:mi:ss')|| 
+' '||TRUNC( round((sysdate-REQUESTED_START_DATE)*60*24),2) ||' Minues '|| requestor result from apps.fnd_conc_requests_form_v 
+where phase_code = 'P' and status_code in (select lookup_code FROM apps.fnd_lookups WHERE LOOKUP_TYPE ='CP_STATUS_CODE' and 
+nvl(meaning, 'UNKNOWN') not in ('Error','Scheduled')) and REQUESTED_START_DATE < sysdate and hold_flag!='Y' and enabled='Y' 
+and request_id in ( select request_id from apps.FND_CONCURRENT_WORKER_REQUESTS)  order by REQUESTED_START_DATE - sysdate;

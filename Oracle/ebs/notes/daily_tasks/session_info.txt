@@ -1,0 +1,112 @@
+###############################################################################################
+Session information:
+###############################################################################################
+
+
+-------------------------------------------------------------
+SELECT a.request_id,
+d.sid as Oracle_SID,
+d.serial#,
+d.osuser,
+d.process,
+c.SPID as OS_Process_ID
+FROM apps.fnd_concurrent_requests a,
+apps.fnd_concurrent_processes b,
+gv$process c,
+gv$session d
+WHERE a.controlling_manager = b.concurrent_process_id
+AND c.pid = b.oracle_process_id
+AND b.session_id=d.audsid
+AND a.request_id = &request_id;
+
+
+-------------------------------------------------------------
+
+
+set linesize 150
+column machine format a15
+column username format a10 tru
+column program format a20 tru
+set verify off
+set head off
+select 'SID/serial: '||s.sid||','||s.serial#||' OS PID:'||spid||chr(10)||'User: '||s.username||' OS User:'||osuser||chr(10)||'Machine:
+'||s.machine||' Program: '||s.program ||chr(10)
+||'Module: '||MODULE||chr(10)
+||'SQL ADDR: ' ||sql_address||chr(10)
+||'Idle: '||floor(last_call_et/3600)||':'||
+floor(mod(last_call_et,3600)/60)||':'||
+mod(mod(last_call_et,3600),60) ||chr(10)
+||'Action: '||action||chr(10)
+||'Client: '||s.client_identifier||chr(10)
+||'Status: '|| s.status||chr(10)
+|| '------------------------------------'
+from gv$session s ,v$process p
+where s.paddr=p.addr and s.sid='1172';
+
+
+----------------------------------------------------------------
+
+set linesize 150
+column machine format a15
+column username format a10 tru
+column program format a20 tru
+set verify off
+set head off
+select 'SID/serial: '||s.sid||','||s.serial#||' OS PID:'||spid||chr(10)
+||'User: '||s.username||' OS User:'||osuser||chr(10)
+||'Machine: '||s.machine||' Program: '||s.program ||chr(10)
+||'Module: '||MODULE||chr(10)
+||'SQL ADDR: ' ||sql_address||chr(10)
+||'Idle: '||floor(last_call_et/3600)||':'||
+        floor(mod(last_call_et,3600)/60)||':'||
+        mod(mod(last_call_et,3600),60) ||chr(10)
+||'Action: '||action||chr(10)
+||'Process: '||Process||chr(10)
+||'Status: '|| s.status
+from v$session s ,v$process p
+where s.paddr=p.addr and s.paddr=;
+
+
+
+select s.username, s.terminal, s.program, sa.sql_text
+from v$session s, v$sqlarea sa, v$process p
+where s.paddr = s.sql_address
+and sa.address = sa.address;
+
+rem this is ps_view.sql
+col username format a15
+col osuer format a10
+col program format a20
+set verify off
+select a.username, a.osuser, a.program, spid, sid, a.serial#
+from v$session a, v$process b
+where a.paddr = b.addr
+and spid = '&pid';
+
+rem this is ps_sql.sql
+set verify off
+column username format a15
+column sql_text format a60
+undefine sid
+undefine serial#
+accept sid prompt 'sid: '
+accept serial prompt 'serial#: '
+select 'SQL Currently Executing: '
+from dual;
+
+select b.username, a.sql_text
+from v$sql a, v$session b
+where b.sql_address = a.address
+and b.sql_hash_value = a. hash_value
+and b.sid = &sid
+and b.serial# ='&serial';
+
+select 'Open Cursors: '
+from dual;
+
+select b.username 'USERNAME', a.sql_text 'SQL_TEXT'
+from v$open_cursor a, v$session b
+where b.sql_address =a.address
+and b.sql_hash_value = a. hash_value
+and b.sid = &sid
+and b.serial# ='&serial';

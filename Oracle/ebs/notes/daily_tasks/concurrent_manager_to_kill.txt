@@ -1,0 +1,15 @@
+###############################################################################################
+Concurrent managers to kill:
+###############################################################################################
+
+col OS_PROCESS_ID for a15
+col GSM_INTERNAL_INFO for a20
+set pages 50
+prompt ===================================================
+prompt The following concurrent managers should be killed:
+prompt ===================================================
+select q.CONCURRENT_QUEUE_NAME,p.OS_PROCESS_ID,p.PROCESS_STATUS_CODE,p.GSM_INTERNAL_INFO
+from fnd_concurrent_processes p, fnd_concurrent_queues q
+where p.CONCURRENT_QUEUE_ID=q.CONCURRENT_QUEUE_ID
+and p.PROCESS_STATUS_CODE = 'A'
+and p.GSM_INTERNAL_INFO='Deactivating';

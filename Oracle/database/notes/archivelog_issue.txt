@@ -1,0 +1,5 @@
+###############################################################################################
+RMAN Archivelogs issue
+###############################################################################################
+
+echo "SELECT SID, SERIAL#, CONTEXT, SOFAR, TOTALWORK, ROUND(SOFAR/TOTALWORK*100,2) \"% COMPLETE\" FROM V\$SESSION_LONGOPS WHERE OPNAME LIKE 'RMAN%' AND OPNAME NOT LIKE '%aggregate%' AND TOTALWORK != 0 AND SOFAR <> TOTALWORK;"| sqlplus -s '/as sysdba'croscheckDELETE NOPROMPT ARCHIVELOG UNTIL SEQUENCE = 1400;DELETE expired ARCHIVELOG SEQUENCE = 8774;DELETE ARCHIVELOG  SEQUENCE = 1400; crosscheck archivelog all; list backup of archivelog from sequence=162500 thread=2;specification does not match any backup in the repositoryRMAN> backup archivelog from sequence=8774 until sequence=8774;crosscheck archivelog all;list archivelog all;delete noprompt archivelog until time 'SYSDATE-1/24';DELETE  archivelog ALL BACKED UP 1 TIMES to disk;DELETE force archivelog ALL BACKED UP 2 TIMES to disk;DELETE archivelog ALL BACKED UP 2 TIMES to disk;DELETE nopromt archivelog ALL BACKED UP 2 TIMES to disk;

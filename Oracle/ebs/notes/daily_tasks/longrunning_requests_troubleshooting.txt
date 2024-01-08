@@ -1,0 +1,185 @@
+###############################################################################################
+Longrunning troubleshooting:
+###############################################################################################
+
+Show longrunning requests:
+-------------------------------------------------------------
+col ORACLE_PROCESS_ID form a15
+col OS_PROCESS_ID form a15
+select ORACLE_PROCESS_ID, OS_PROCESS_ID, request_id from apps.fnd_concurrent_requests where request_id =&Reques_ID;
+
+
+define SIDD=&SESSION_ID;
+set linesize 120 pagesize 999
+Prompt Session Activity
+Prompt =================================
+select a.sid,b.executions,b.disk_reads,
+b.buffer_gets,b.rows_processed  from v$session a,v$sqlarea b where a.sql_address=b.address and a.sid='&SIDD';
+PROMpT Current SQL running
+Prompt =================================
+select c.sql_text from v$session a,v$sqlarea b,V$sqltext c
+where a.sql_address=b.address and b.address=c.address and a.sid='&SIDD' order by piece;
+
+
+-------------------------------------------------------------
+Step 1 : Check Concurrent Request ID of long running concurrent request from front end
+Step 2 : Find SID, SERIAL# and SPID by running SQL (given below)
+Step 3 : Enable event 10046 trace with level 12 using oradebug ( for 15-20 minute)
+Step 4 : Disable trace (once you are happy with trace size)
+Step 5 : Convert raw trace to TKPROF using various sort options like fchela, prsela, execpu
+Step 6 : Check TKPROF out file to find root cause of slow concurrent request
+-------------------------------------------------------------
+
+
+Step 1 : Check Request ID from Find Concurrent request screen
+-------------------------------------------------------------
+
+Step 2 : Run below command to find SPID, provide concurrent request ID when prompted
+-------------------------------------------------------------
+SELECT a.request_id, d.sid, d.serial# ,d.osuser,d.process , c.SPID
+FROM apps.fnd_concurrent_requests a,
+apps.fnd_concurrent_processes b,
+v$process c,
+v$session d
+WHERE a.controlling_manager = b.concurrent_process_id
+AND c.pid = b.oracle_process_id
+AND b.session_id=d.audsid
+AND a.request_id = &Request_ID
+AND a.phase_code = 'R';
+
+
+
+
+
+Step 3.1 : Check and confirm OSPID on Database Node (1633 in my case)
+-------------------------------------------------------------
+ps-ef | grep 1633
+
+
+Step 3.2 : Set OSPID (1633 in my case) for ORADEBUG
+-------------------------------------------------------------
+SQL> oradebug setospid 1633
+—
+Oracle pid: 68, Unix process pid: 1633, image: oraclevis11i@onlineappsdba
+—
+
+Step 3.3 : Enable trace for 10046 event with level 12
+-------------------------------------------------------------
+SQL> oradebug event 10046 trace name context forever, level 12
+
+
+Step 3.4 : Locate Trace file as
+-------------------------------------------------------------
+SQL>oradebug tracefile_name
+
+/oracle/apps/vis11idb/10.2.0/admin/vis11i_onlineappsdba/udump/vis11i_ora_1633.trc
+
+Wait for 15-20 minutes
+
+
+Step 4 : Disable trace
+-------------------------------------------------------------
+SQL> oradebug event 10046 trace name context off
+
+Step 5: Create tkprof file like
+tkprof  ‘/oracle/ apps/ vis11idb/ 10.2.0/ admin/ vis11i_onlineappsdba/ udump/ vis11i_ora_1633.trc’   ’/oracle/ apps/ vis11idb/ 10.2.0/ admin/ vis11i_onlineappsdba/ udump/ tkprof_1633.txt’ explain=apps/[apps_passwd]  fchela …
+
+
+
+Step 6 : Check TKPROF file to find root cause of slow concurrent requet
+-------------------------------------------------------------
+
+
+
+SQL Script to Troubleshoot a long-running concurrent request
+-------------------------------------------------------------
+
+set term on
+set feedback on
+set echo on
+set arraysize 4
+set linesize 200
+set pages 9999
+set underline =;
+column username format A15
+column sid format 9990 heading SID
+column type format A4
+column lmode format 990 heading 'HELD'
+column request format 990 heading 'REQ'
+column id1 format 9999990
+column id2 format 9999990
+column sql_text format a100
+column name format a80
+break on id1 skip 1 dup
+undefine v_request_id
+define v_request_id
+undefine v_spid
+define v_spid
+undefine v_sid
+define v_sid
+spool vj_concurrent_monitor.lst
+
+Prompt Enter the concurrent_request_id
+Accept v_request_id
+prompt checking requests
+select oracle_process_id from fnd_concurrent_requests where request_id='&v_request_id';
+
+Prompt Enter the operating system oracle process id for this concurrent request
+accept v_spid
+Prompt Getting the sid
+SELECT SID,SERIAL#,LOGON_TIME FROM V$SESSION WHERE PADDR IN
+(SELECT ADDR FROM V$PROCESS WHERE SPID='&v_spid');
+
+prompt Enter the session id for this concurrent request
+accept v_sid
+prompt memory usage for this session
+SELECT A.SID,A.USERNAME,B.VALUE,c.name FROM V$SESSION a,V$SESSTAT B,V$STATNAME C WHERE A.SID=B.SID
+AND B.STATISTIC#=C.STATISTIC# AND C.NAME like'%memor%' and a.sid='&v_sid';
+
+prompt resource usage for this session
+SELECT A.SID,A.USERNAME,B.VALUE,c.name FROM V$SESSION a,V$SESSTAT B,V$STATNAME C WHERE A.SID=B.SID
+AND B.STATISTIC#=C.STATISTIC# and a.sid='&v_sid' order by b.value;
+
+
+prompt this session waited on
+select sid,event,wait_time,state from v$session_wait where sid='&v_sid' order by wait_time;
+
+
+prompt current sql executing by this session
+select a.sid,b.sorts,b.executions,b.loads,b.parse_calls,b.disk_reads,
+b.buffer_gets,b.rows_processed,C.sql_text from v$session a,v$sqlarea b,V$SQLTEXT C
+where a.sql_address=b.address and b.address=c.address and a.sid='&v_sid';
+
+
+prompt sql which is taking more than 3mb in shared pool
+prompt nosql should take morethan 1mb in shared pool.
+prompt please ask the developers to tune the following sql statements
+select name,
+namespace,type,sharable_mem/(1024*1024) sharablemem,loads,executions,locks,pins,kept from v$db_object_cache
+where SHARABLE_MEM>3000000;
+
+
+prompt sort segments using by this session
+SELECT s.username,s.sid,s.osuser,s.process,s.machine,u.extents, u.blocks,u.tablespace FROM v$session s, v$sort_usage u
+WHERE s.saddr=u.session_addr order by extents;
+and s.sid='&v_sid';
+
+prompt current temp segments free in this instance
+SELECT tablespace_name, extent_size, total_extents, used_extents, free_extents, max_used_size FROM v$sort_segment;
+
+
+
+prompt total system events at this time
+select event,total_waits waits, total_timeouts timeouts, time_waited total_time from v$system_event order by total_waits;
+
+prompt latch contention if thery is any
+SELECT latch#, name, gets, misses, sleeps FROM v$latch WHERE sleeps>0 ORDER BY sleeps ;
+
+
+prompt the latch which is sleeping
+select name, sleeps,latch# from v$latch_children where sleeps>4 order by sleeps;
+
+
+spool off
+clear columns
+clear breaks 

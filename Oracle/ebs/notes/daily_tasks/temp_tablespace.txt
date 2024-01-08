@@ -1,0 +1,94 @@
+###############################################################################################
+TEMP tablespace:
+###############################################################################################
+
+set linesize 120
+column name format a10
+SELECT A.tablespace_name name, D.mb_total total_in_mb,
+round(SUM (A.used_blocks*D.block_size)/1024/1024, 1) used_in_MB,
+D.mb_total-round(SUM (A.used_blocks*D.block_size)/1024/1024, 1) free_in_mb,
+round((SUM(A.used_blocks*D.block_size)/1024/1024*100/D.mb_total), 1) "%_used"
+FROM v$sort_segment A,
+(SELECT B.name, C.block_size, round( SUM( C.bytes)/1024/1024, 1) mb_total
+FROM v$tablespace B, v$tempfile C
+WHERE B.ts#= C.ts# GROUP BY B.name, C.block_size) D
+WHERE A.tablespace_name = D.name
+GROUP by A.tablespace_name, D.mb_total;
+
+Identify temporary datafile details :
+-------------------------------------------------------------
+SQL> select file_name , TABLESPACE_NAME from DBA_TEMP_FILES;
+
+
+2. Check if there is any space available in temporary tablespace (segment)
+-------------------------------------------------------------
+SELECT   A.tablespace_name tablespace, D.mb_total,
+SUM (A.used_blocks * D.block_size) / 1024 / 1024 mb_used,
+D.mb_total - SUM (A.used_blocks * D.block_size) / 1024 / 1024 mb_free
+FROM     v$sort_segment A,
+(
+SELECT   B.name, C.block_size, SUM (C.bytes) / 1024 / 1024 mb_total
+FROM     v$tablespace B, v$tempfile C
+WHERE    B.ts#= C.ts#
+GROUP BY B.name, C.block_size
+) D
+WHERE    A.tablespace_name = D.name
+GROUP by A.tablespace_name, D.mb_total;
+
+
+3.  Temporary fix
+-------------------------------------------------------------
+a) Resize temporary file as
+SQL> ALTER DATABASE TEMPFILE ‘/u01/oradata/VIS11i/temp01.dbf’ RESIZE 3072M;
+
+or
+
+b) Add temp datafile to temporary tablespace as
+
+SQL> ALTER TABLESPACE TEMP ADD TEMPFILE ‘/u01/oradata/VIS11i/temp02.dbf’
+SIZE 1024M REUSE AUTOEXTEND ON NEXT 50M  MAXSIZE 1024M;
+
+
+
+Root Cause Analysis
+
+1.  Identify temp segment usages per session
+-------------------------------------------------------------
+
+SQL> SELECT   S.sid || ',' || S.serial# sid_serial, S.username, S.osuser, P.spid, S.module,
+P.program, SUM (T.blocks) * TBS.block_size / 1024 / 1024 mb_used, T.tablespace,
+COUNT(*) statements
+FROM     v$sort_usage T, v$session S, dba_tablespaces TBS, v$process P
+WHERE    T.session_addr = S.saddr
+AND      S.paddr = P.addr
+AND      T.tablespace = TBS.tablespace_name
+GROUP BY S.sid, S.serial#, S.username, S.osuser, P.spid, S.module,
+P.program, TBS.block_size, T.tablespace
+ORDER BY mb_used;
+
+
+2. Identify temp segment usages per statement
+-------------------------------------------------------------
+SQL> SELECT  S.sid || ‘,’ || S.serial# sid_serial, S.username, Q.hash_value, Q.sql_text,
+T.blocks * TBS.block_size / 1024 / 1024 mb_used, T.tablespace
+FROM    v$sort_usage T, v$session S, v$sqlarea Q, dba_tablespaces TBS
+WHERE   T.session_addr = S.saddr
+AND     T.sqladdr = Q.address
+AND     T.tablespace = TBS.tablespace_name
+ORDER BY mb_used;
+Depending on outcome of temp segment usage per session and per statement focus on problematic session/statement.
+
+
+
+
+If OK:  Current usage is normal.
+-------------------------------------------------------------
+col TABLESPACE format a15;
+SELECT df.tablespace_name TABLESPACE, df.total_space_mb TOTAL_SPACE_MB,
+(df.total_space_mb - fs.free_space_mb) USED_SPACE_MB, fs.free_space_mb FREE_SPACE_MB 
+FROM (SELECT tablespace_name, SUM (bytes) TOTAL_SPACE,
+ROUND( SUM (bytes) / 1048576) TOTAL_SPACE_MB
+FROM dba_data_files GROUP BY tablespace_name) df,
+(SELECT tablespace_name, SUM (bytes) FREE_SPACE, ROUND( SUM (bytes) / 1048576) FREE_SPACE_MB
+FROM dba_free_space GROUP BY tablespace_name) fs
+WHERE df.tablespace_name = fs.tablespace_name(+) ORDER BY ROUND(100 * (fs.free_space / df.total_space),2);

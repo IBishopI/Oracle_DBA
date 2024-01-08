@@ -1,0 +1,80 @@
+#################################################################
+Workflow mailer issue:
+#################################################################
+
+-- Check workflow mailer service current status
+--------------------------------------------
+sqlplus apps/<apps password>
+  select running_processes
+    from apps.fnd_concurrent_queues
+   where concurrent_queue_name = 'WFMLRSVC';
+
+
+
+-- Find current mailer status
+--------------------------------------------
+ sqlplus apps/<apps password>
+  select component_status
+    from apps.fnd_svc_components
+   where component_id =
+        (select component_id
+           from apps.fnd_svc_components
+          where component_name = 'Workflow Notification Mailer');
+
+
+  Possible values:
+  RUNNING
+  STARTING
+  STOPPED_ERROR
+  DEACTIVATED_USER
+  DEACTIVATED_SYSTEM
+
+
+-- Stop notification mailer
+--------------------------------------------
+sqlplus apps/<apps password>
+  declare
+       p_retcode number;
+       p_errbuf varchar2(100);
+       m_mailerid fnd_svc_components.component_id%TYPE;
+  begin
+       -- Find mailer Id
+       -----------------
+       select component_id
+         into m_mailerid
+         from fnd_svc_components
+        where component_name = 'Workflow Notification Mailer';
+       --------------
+       -- Stop Mailer
+       --------------
+       fnd_svc_component.stop_component(m_mailerid, p_retcode, p_errbuf);
+       commit;
+  end;
+  /
+
+
+-- Start notification mailer
+--------------------------------------------
+sqlplus apps/<apps password>
+  declare
+       p_retcode number;
+       p_errbuf varchar2(100);
+       m_mailerid fnd_svc_components.component_id%TYPE;
+  begin
+       -- Find mailer Id
+       -----------------
+       select component_id
+         into m_mailerid
+         from fnd_svc_components
+        where component_name = 'Workflow Notification Mailer';
+       --------------
+       -- Start Mailer
+       --------------
+       fnd_svc_component.start_component(m_mailerid, p_retcode, p_errbuf);
+       commit;
+  end;
+  /
+
+
+-- More info: http://oracle4ryou.blogspot.ru/2013/03/workflow-mailer-troubleshooting.html
+--------------------------------------------

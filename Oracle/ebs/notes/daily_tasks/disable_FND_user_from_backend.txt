@@ -1,0 +1,29 @@
+#################################################################
+DISABLE USERS EBS
+#################################################################
+
+apps.fnd_user_pkg.EnableUser =>To Enable Users
+apps.fnd_user_pkg.DisableUser =>To Disable Users,
+
+Below is the syntax which can used to Huge number of Users in one GO !!
+-------------------------------------------------------------------------------------
+
+declare cursor cur1 is
+select user_name from apps.fnd_user where user_id>='1000';
+begin
+for all_user in cur1 loop
+apps.fnd_user_pkg.DisableUser(all_user.user_name);
+commit;
+end loop;
+end;
+---------------------------------
+or
+---------------------------------
+declare cursor cur1 is
+select user_name from apps.fnd_user where user_id>='1000';
+begin
+for all_user in cur1 loop
+fnd_user_pkg.updateuser(x_user_name=>all_user.user_name,x_owner=>'CUST',x_end_date=>SYSDATE);
+commit;
+end loop;
+end;

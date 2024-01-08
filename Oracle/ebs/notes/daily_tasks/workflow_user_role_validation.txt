@@ -1,0 +1,17 @@
+#################################################################
+Fix responsibility issue (Workflow User/Roles Validation)
+#################################################################
+
+1. Sync responsibility role data into the WF table:
+
+begin
+fnd_user_resp_groups_api.sync_roles_all_resp_secgrps(TRUE);
+end;
+
+2. Synchronize WF LOCAL tables:
+
+exec WF_LOCAL_SYNCH.BulkSynchronization('ALL');
+
+3. Workflow Directory Services User/Role Validation:
+
+exec wf_maintenance.ValidateUserRoles(p_BatchSize => null, p_check_dangling => TRUE, p_check_missing_ura => TRUE, p_UpdateWho => FALSE);

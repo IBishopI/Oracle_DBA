@@ -1,0 +1,42 @@
+#################################################################
+Lock
+#################################################################
+column oracle_username format a15
+column os_user_name format a15
+column object_name format a37
+column object_type format a37
+select a.session_id,a.oracle_username, a.os_user_name, b.owner "OBJECT OWNER", b.object_name,b.object_type,
+DECODE(a.locked_mode,
+0, 'None',
+1, 'Null',
+2, 'Row-S (SS)',
+3, 'Row-X (SX)',
+4, 'Share',
+5, 'S/Row-X (SSX)',
+6, 'Exclusive', 
+TO_CHAR(a.locked_mode)) lock_mode
+from 
+(select object_id, SESSION_ID, ORACLE_USERNAME, OS_USER_NAME, LOCKED_MODE from v$locked_object) a, 
+(select object_id, owner, object_name,object_type from dba_objects) b
+where a.object_id=b.object_id;
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+select owner||'.'||object_name obj
+,oracle_username||' ('||s.status||')' oruser
+,os_user_name osuser
+,machine computer
+,l.process unix
+,''''||s.sid||','||s.serial#||'''' ss
+,r.name rs
+,to_char(s.logon_time,'yyyy/mm/dd hh24:mi:ss') time
+from v$locked_object l
+,dba_objects o
+,v$session s
+,v$transaction t
+,v$rollname r
+where l.object_id = o.object_id
+and s.sid=l.session_id
+and s.taddr=t.addr
+and t.xidusn=r.usn
+order by osuser, ss, obj;

@@ -1,0 +1,72 @@
+###############################################################################################
+Concurrent requests:
+###############################################################################################
+--1st Query:
+-------------------------------------------------------------
+col "User ID" format a15;
+col "Concurrent Program Name" format a25;
+col "Hold Flag" format a4;
+set linesize 120;
+SELECT fu.user_name "User ID",  fcr.request_id "Request ID", fcpt.user_concurrent_program_name "Concurrent Program Name", DECODE(fcr.phase_code,'C',  'Completed', 'P',  'Pending', 'R',  'Running', 'I', 'Inactive', fcr.phase_code) "Phase",
+DECODE(fcr.status_code, 'A',  'Waiting', 'B',  'Resuming', 'C',  'Normal', 'D',  'Cancelled', 'E',  'Error', 'F',  'Scheduled', 'G',  'Warning', 'H',  'On Hold',
+ 'I',  'Normal', 'M',  'No Manager', 'Q',  'Standby', 'R',  'Normal', 'S',  'Suspended', 'T',  'Terminating', 'U',  'Disabled', 'W',  'Paused', 'X',  'Terminated', 'Z',  'Waiting', fcr.status_code)  "Status",
+       fcr.request_date                       "Req. Date",
+       fcr.requested_start_date               "Start Date Req",
+       fcr.hold_flag                          "Hold Flag",
+       fcr.parent_request_id                  "Parent Request ID"
+  FROM apps.fnd_user                    fu,
+       apps.fnd_responsibility_tl       frt,
+       apps.fnd_concurrent_requests     fcr,
+       apps.fnd_concurrent_programs_tl  fcpt
+ WHERE fu.user_id                 =  fcr.requested_by
+   AND fcr.concurrent_program_id  =  fcpt.concurrent_program_id
+   AND fcr.responsibility_id      =  frt.responsibility_id
+   AND frt.LANGUAGE               =  USERENV('LANG')
+   AND fcpt.LANGUAGE              =  USERENV('LANG')
+   AND fcr.request_id = &CM_Request_ID ORDER BY fcr.request_date DESC;
+
+--2nd Query:
+-------------------------------------------------------------
+col "User ID" format a10;
+col "Responsibility Used" format a20;
+col "Concurrent Program Name" format a20;
+SELECT fu.user_name "User ID", frt.responsibility_name "Responsibility Used", fcr.request_id "Request ID", fcpt.user_concurrent_program_name "Concurrent Program Name", DECODE(fcr.phase_code,'C',  'Completed', 'P',  'Pending', 'R',  'Running', 'I', 'Inactive', fcr.phase_code) "Phase",
+DECODE(fcr.status_code, 'A',  'Waiting', 'B',  'Resuming', 'C',  'Normal', 'D',  'Cancelled', 'E',  'Error', 'F',  'Scheduled', 'G',  'Warning', 'H',  'On Hold',
+ 'I',  'Normal', 'M',  'No Manager', 'Q',  'Standby', 'R',  'Normal', 'S',  'Suspended', 'T',  'Terminating', 'U',  'Disabled', 'W',  'Paused', 'X',  'Terminated', 'Z',  'Waiting', fcr.status_code)  "Status",
+       fcr.request_date                       "Request Date",
+       fcr.requested_start_date               "Request Start Date",
+       fcr.hold_flag                          "Hold Flag",
+       fcr.parent_request_id                  "Parent Request ID"
+  FROM apps.fnd_user                    fu,
+       apps.fnd_responsibility_tl       frt,
+       apps.fnd_concurrent_requests     fcr,
+       apps.fnd_concurrent_programs_tl  fcpt
+ WHERE fu.user_id                 =  fcr.requested_by
+   AND fcr.concurrent_program_id  =  fcpt.concurrent_program_id
+   AND fcr.responsibility_id      =  frt.responsibility_id
+   AND frt.LANGUAGE               =  USERENV('LANG')
+   AND fcpt.LANGUAGE              =  USERENV('LANG')
+   AND fcr.request_id = &CM_Request_ID ORDER BY fcr.request_date DESC;
+
+
+
+3rd
+------------------------------------------------------
+SELECT /*+ rule */
+       rq.parent_request_id                   "Parent Req. ID",
+       rq.request_id                          "Req. ID",
+       tl.user_concurrent_program_name        "Program Name",
+       rq.actual_start_date                   "Start Date",
+       rq.actual_completion_date              "Completion Date",
+       ROUND((rq.actual_completion_date -
+           rq.actual_start_date) * 1440, 2)   "Runtime (in Minutes)"      
+  FROM applsys.fnd_concurrent_programs_tl  tl,
+       applsys.fnd_concurrent_requests     rq
+ WHERE tl.application_id        = rq.program_application_id
+   AND tl.concurrent_program_id = rq.concurrent_program_id
+   AND tl.LANGUAGE              = USERENV('LANG')
+   AND rq.actual_start_date IS NOT NULL
+   AND rq.actual_completion_date IS NOT NULL
+   AND tl.user_concurrent_program_name = 'Autoinvoice Import Program'  -- <change it>
+   -- AND TRUNC(rq.actual_start_date) = '&start_date'  -- uncomment this for a specific date
+ ORDER BY rq.request_id DESC;

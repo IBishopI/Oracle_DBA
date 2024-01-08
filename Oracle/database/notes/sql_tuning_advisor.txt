@@ -1,0 +1,25 @@
+#################################################################
+SQL tuning advisor:
+#################################################################
+SET SERVEROUTPUT ON
+DECLARE
+L_SQL_TUNE_TASK_ID VARCHAR2(100);
+BEGIN
+L_SQL_TUNE_TASK_ID := DBMS_SQLTUNE.CREATE_TUNING_TASK (
+SQL_ID => 'atz4rfv27ckjg',
+SCOPE => DBMS_SQLTUNE.SCOPE_COMPREHENSIVE,
+TIME_LIMIT => 600,
+TASK_NAME => 'atz4rfv27ckjg_task',
+DESCRIPTION => 'Tuning task for atz4rfv27ckjg');
+DBMS_OUTPUT.PUT_LINE('l_sql_tune_task_id: ' || L_SQL_TUNE_TASK_ID);
+END;
+/
+
+execute dbms_sqltune.execute_tuning_task (task_name => 'atz4rfv27ckjg_task');
+
+spool /tmp/sql_atz4rfv27ckjg.txt
+
+set long 65536
+set longchunksize 65536
+set linesize 150
+select dbms_sqltune.report_tuning_task('atz4rfv27ckjg_task') AS recommendations FROM dual;

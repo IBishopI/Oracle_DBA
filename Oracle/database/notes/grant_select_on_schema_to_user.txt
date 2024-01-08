@@ -1,0 +1,10 @@
+#################################################################
+Grant for schema:
+#################################################################
+BEGIN
+     FOR r IN (SELECT OWNER,TABLE_NAME FROM ALL_TABLES WHERE OWNER='PN')
+     LOOP
+          EXECUTE IMMEDIATE 'GRANT SELECT ON ' || R.OWNER || '.' || R.TABLE_NAME || ' TO PPAUL';
+     END LOOP;
+END;
+/

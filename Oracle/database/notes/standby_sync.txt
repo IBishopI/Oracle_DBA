@@ -1,0 +1,64 @@
+###############################################################################################
+Standby / Primary sequence synchronize:
+###############################################################################################
+
+On primary DB
+##############
+select to_char(sysdate,'dd-mon-yyyy hh24:mi:ss') Date from dual;
+SELECT distinct SEQUENCE# "Last Sequence Generated", THREAD# "Thread"
+FROM V$ARCHIVED_LOG
+WHERE (THREAD#,FIRST_TIME ) IN (SELECT THREAD#,MAX(FIRST_TIME) FROM V$ARCHIVED_LOG GROUP BY THREAD#)
+ORDER BY 1;
+
+On stabdby db:
+###############
+SELECT ARCH.THREAD# "Thread", ARCH.SEQUENCE# "Last Sequence Received", APPL.SEQUENCE# "Last Sequence Applied", (ARCH.SEQUENCE# - APPL.SEQUENCE#) "Difference"
+FROM
+(SELECT THREAD# ,SEQUENCE# FROM V$ARCHIVED_LOG WHERE (THREAD#,FIRST_TIME ) IN (SELECT THREAD#,MAX(FIRST_TIME) FROM V$ARCHIVED_LOG GROUP BY THREAD#)) ARCH,
+(SELECT THREAD# ,SEQUENCE# FROM V$LOG_HISTORY WHERE (THREAD#,FIRST_TIME ) IN (SELECT THREAD#,MAX(FIRST_TIME) FROM V$LOG_HISTORY GROUP BY THREAD#)) APPL
+WHERE
+ARCH.THREAD# = APPL.THREAD#;
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+select max(sequence#) from v$log_history;
+
+
+
+script /home/oraprd/RMAN_spool.txt
+RMAN target / <<EOF
+list copy;
+EOF
+
+
+
+list backup of archivelog sequence 3317 thread 2;
+restore archivelog sequence 3317 thread 2 until sequence 3317 thread 2;
+
+run
+{
+set archivelog destination to '/tmp';
+restore archivelog from logseq 3317 until logseq 3317;
+}
+
+
+run
+{
+set archivelog destination to '/tmp';
+restore archivelog sequence 3317 thread 2 until sequence 3317 thread 2;
+}
+
+
+ALTER DATABASE RECOVER MANAGED STANDBY DATABASE CANCEL;
+ALTER DATABASE RECOVER MANAGED STANDBY DATABASE DISCONNECT FROM SESSION;
+
+###########################################
+
+select max(sequence#) from v$log_history;
+
+###########################################
+
+
+accept v_pri_db char promt 'Primary database "user/pass@service_name": '
+
+select db1.max(sequence#) as "Sequence Primary", max(sequence#) as "Sequence Standby" from &v_pri_db.v$log_history db1, v$log_history;
+

@@ -1,0 +1,8 @@
+#################################################################
+CM Dead process
+#################################################################
+select q.CONCURRENT_QUEUE_NAME,p.OS_PROCESS_ID,p.PROCESS_STATUS_CODE,p.GSM_INTERNAL_INFO
+from fnd_concurrent_processes p, fnd_concurrent_queues q
+where p.CONCURRENT_QUEUE_ID=q.CONCURRENT_QUEUE_ID
+and p.PROCESS_STATUS_CODE = 'A'
+and p.GSM_INTERNAL_INFO='Deactivating';

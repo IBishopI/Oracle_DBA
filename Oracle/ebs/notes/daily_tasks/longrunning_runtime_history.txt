@@ -1,0 +1,14 @@
+#################################################################
+Longrunning runtime history:
+#################################################################
+select distinct(fcr.REQUEST_ID),fcp.USER_CONCURRENT_PROGRAM_NAME,fcr.PHASE_CODE,fcr.STATUS_CODE,
+fcr.ACTUAL_START_DATE,fcr.ACTUAL_COMPLETION_DATE,
+case
+when fcr.ACTUAL_COMPLETION_DATE IS NULL then round((sysdate - fcr.ACTUAL_START_DATE)*60*24)||' Mins'
+else round((fcr.ACTUAL_COMPLETION_DATE - fcr.ACTUAL_START_DATE)*60*24)||' Mins'
+end
+as RUNTIME
+from apps.fnd_concurrent_requests fcr, 
+apps.fnd_concurrent_programs_tl fcp where
+fcp.CONCURRENT_PROGRAM_ID=fcr.CONCURRENT_PROGRAM_ID and fcr.ACTUAL_START_DATE>=sysdate-7 
+and fcp.USER_CONCURRENT_PROGRAM_NAME='%&Request_name%' order by fcr.ACTUAL_START_DATE DESC;

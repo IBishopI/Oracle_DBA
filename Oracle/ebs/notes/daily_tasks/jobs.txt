@@ -1,0 +1,60 @@
+###############################################################################################
+JOBS:
+###############################################################################################
+
+
+col owner format a8;
+col object_name format a30;
+col created format a10;
+col LAST_DDL_TIME format a10;
+col TIMESTAMP format a20;
+select OWNER,OBJECT_NAME,CREATED,LAST_DDL_TIME,TIMESTAMP,STATUS from dba_objects where object_name like 'EUL5%' and status!='VALID';
+
+
+
+OWNER    OBJECT_NAME               CREATED         LAST_DDL_TIME   TIMESTAMP           STATUS
+-------- ------------------------- --------------- --------------- ------------------- -------
+APPS     EUL5_B120402092312Q1V1    02-APR-12       02-JUL-13       2013-07-02:23:00:50 INVALID
+APPS     EUL5_B120410100638Q1V1    10-APR-12       02-JUL-13       2013-07-02:23:00:51 INVALID
+
+
+===========================================================
+
+
+
+col log_date format a40;
+col job_name format a20;
+col status format a10;
+select log_date, job_name, status from dba_scheduler_job_log WHERE job_name = 'IDX_RB$J_13_2';
+
+
+exec dbms_scheduler.run_job('"SYS"."IDX_RB$J_13_2"');
+
+#also can try following:   exec dbms_ijob.run(34531);
+
+column log_date format a40
+select log_date,status from dba_scheduler_job_run_details where job_name='IDX_RB$J_13_2' order by log_date desc;
+
+select OWNER,OBJECT_NAME,OBJECT_TYPE,CREATED,LAST_DDL_TIME from dba_objects where OBJECT_TYPE='JOB' and object_name like '%IDX%';
+
+
+select dbms_metadata.get_ddl( 'PROCOBJ','IDX_RB$J_13_2') from dual;
+
+select JOB_NAME, JOB_SUBNAME from dba_scheduler_job_run_details where job_name like '%IDX_RB$%' order by 1
+
+
+
+Compile 1 object with searching root couse:
+-------------------------------------------------------------
+alter VIEW APPS.EUL5_B120402092312Q1V1 compile ;
+
+Warning: View altered with compilation errors.
+
+~~~~~~~~~~~~~~~~~~
+SQL> show error
+Errors for FUNCTION BOLINF.GET_NET_ADJ_ACCT:
+8/2      PL/SQL: SQL Statement ignored
+11/9     PL/SQL: ORA-00942: table or view does not exist
+~~~~~~~~~~~~~~~~~~
+set long 32767
+select text from all_views where name=EUL5_B120402092312Q1V1;

@@ -1,0 +1,40 @@
+###############################################################################################
+  INVAILD Objects:
+###############################################################################################
+
+Count of Invalid objects:
+-------------------------------------------------------------
+select count(*) from dba_objects where status='INVALID';
+
+
+
+List of Invalid objects:
+-------------------------------------------------------------
+col owner format a10
+col object_name format a40
+col object_type format a25
+set pagesize 0
+select owner, object_name, object_type from dba_objects where status!='VALID';
+
+
+Compile invalid objects:
+-------------------------------------------------------------
+
+exec utl_recomp.recomp_parallel(4);
+
+
+Create script for compile invalid objects if previous method didn't help:
+-------------------------------------------------------------
+spool INVALID_OBJECTS.sql
+
+select 'alter '||object_type||' '||owner||'.'||object_name||' compile;' from dba_objects where status <>'VALID';
+
+spool off;
+
+@INVALID_OBJECTS.sql
+
+
+
+select 'alter '||decode(object_type,'PACKAGE BODY','PACKAGE',object_type)||' 
+'||owner||'.'||object_name||' compile '||decode(object_type,'PACKAGE BODY','BODY')||
+';' as text from dba_objects where status != 'VALID';

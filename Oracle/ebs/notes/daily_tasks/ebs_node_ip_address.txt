@@ -1,0 +1,3 @@
+select substr(node_name, 1, 20) node_name, server_address, substr(host, 1, 15) host,
+substr(domain, 1, 20) domain, substr(support_cp, 1, 3) cp, substr(support_web, 1, 3) web,
+substr(SUPPORT_DB, 1, 3) db, substr(VIRTUAL_IP, 1, 30) virtual_ip from fnd_nodes;

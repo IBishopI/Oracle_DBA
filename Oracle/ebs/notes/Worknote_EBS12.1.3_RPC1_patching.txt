@@ -1,0 +1,845 @@
+###########################################################################
+#									  #
+#  Task: Install EBS R12, and apply patch 17774755 (RPC1) on it.	  #
+#  Performed by B.Holovko						  #
+#									  #
+###########################################################################
+
+
+Machines info:
+
+Main system:
+----------------------------------------------------
+Machine: Laptop - Sumsung RV509
+RAM: 8GB
+SWAP: 5.5 GB
+CPU: Intel(R) Core(TM) i3 CPU       M 380  @ 2.53GHz
+OS: Ubuntu 13.10 (x64)
+
+Guest systems (Managed by Oracle Box):
+
+Database server:
+----------------------------------------------------------------------------------------------------
+ORACLE_SID:   RGRPC
+ORACLE_HOME:   /rgolovko/app_db/db/tech_st/11.1.0
+APPS_SCRIPTS:  /rgolovko/app_db/db/tech_st/11.1.0/appsutil/bin/
+
+HOST:    romdb01.rgolovko.com
+KERNEL:  2.6.32-200.13.1.el5uek.debug
+IP:      192.168.0.2
+OS:  "Enterprise Linux Enterprise Linux Server release 5.7"
+RAM:  2004 MB
+SWAP:  3067 MB
+----------------------------------------------------------------------------------------------------
+
+Application server:
+----------------------------------------------------------------------------------------------------
+ORACLE_SID:   RGRPC
+ORACLE_HOME:   /rgolovko/apps/tech_st/10.1.2
+APPS_SCRIPTS:  /rgolovko/apps/inst/apps/RGRPC_rommt01/admin/scripts
+
+HOST:    rommt01.rgolovko.com
+KERNEL:  2.6.32-200.13.1.el5uek
+IP:      192.168.0.5
+OS:  "Enterprise Linux Enterprise Linux Server release 5.7"
+RAM:  2542 MB
+SWAP:  6142 MB
+----------------------------------------------------------------------------------------------------
+
+
+
+###########################################################################
+###########################################################################
+##                       Pre-Patch Analysis (PPA)			 ##
+###########################################################################
+###########################################################################
+##									 ##
+## Main patch to apply: 17774755 - RPC1					 ##
+## "Oracle E-Business Suite Release 12.1.3+ Recommended Patch Collection ##
+##									 ##
+###########################################################################
+
+PPA secttion was performed according to MOS note: 
+
+"Oracle E-Business Suite Release 12.1.3+ Recommended Patch Collection 1 (RPC1) (Doc ID 1638535.1)"
+
+
+Patch to apply:
+----------------------------------------------------------------------------------------------------
+[-] 17774755 - (3.43 GB) - Oracle E-Business Suite Release 12.1.3+ Recommended Patch Collection 1 [RPC1]
+ 
+Prerequisite patches:
+-------------------------------------------------------------------
+[-] 17887429 - (44.3 MB) - 1OFF:17887429 : ERROR WHEN APPLYING PATCH 17839156
+
+[-] 9239089 - (2.2 MB) - R12.AD.B.delta.3 Oracle Applications DBA 12.1.3 Product Release Update Pack
+
+[-] 9239090 - (3.4 GB) - 12.1.3	ORACLE E-BUSINESS SUITE 12.1.3 RELEASE UPDATE PACK
+
+[-] 9817770 - (1.3 MB) - POST-R12.ATG_PF.B.DELTA.3 CONSOLIDATED PATCH
+    [+] 9239089 - (2.2 MB) - Patch R12.AD.B.delta.3: Oracle Applications DBA 12.1.3 Product Release Update Pack	
+    [+] 8919491 - (175.2 MB) - Patch R12.ATG_PF.B.delta.3: Oracle Applications Technology 12.1.3 Product Family Release UPDATE P
+        [+] 9239089 - (2.2 MB) - Patch R12.AD.B.delta.3: Oracle Applications DBA 12.1.3 Product Release Update Pack
+
+[-] 9966055 -  (12.7 KB) - Patch 9966055: 1OFF:12.1.3:TRANSLATED VERSION OF FNDSCSGN NOT LAUNCHED
+    [+] 9239089 - (2.2 MB) - Patch R12.AD.B.delta.3: Oracle Applications DBA 12.1.3 Product Release Update Pack	
+    [+] 8919491 - (175.2 MB) - Patch R12.ATG_PF.B.delta.3: Oracle Applications Technology 12.1.3 Product Family Release UPDATE P
+
+[-] 9400185 - (6.7 MB) - ORACLE EBS APPLICATIONS TECHNOLOGY ONLINE HELP FOR 12.1.3 RELEASE UPDATE PACK
+
+[-] 9239095 - (57.7 MB) - Oracle E-Business Suite Online Help for 12.1.3 Release Update Pack
+    [+] 9239090 (3.4 GB) Patch 12.1.3: ORACLE E-BUSINESS SUITE 12.1.3 RELEASE UPDATE PACK	
+    [+] 9239089 - (2.2 MB) - R12.AD.B.delta.3
+
+[-] 17884289 - (13.3 MB) - R12.AD.B.Delta.4
+    [+] 9239089 - (2.2 MB) - R12.AD.B.delta.3
+    [+] 8919491 - (175.2 MB) - R12.ATG_PF.B.delta.3
+
+[-] 17886182 - (748.8 KB) - R12.ADO.B.Delta.4
+    [+] 9239089 - (2.2 MB) - R12.AD.B.delta.3
+    [+] 8919491 - (175.2 MB) - R12.ATG_PF.B.delta.3
+
+[-] 18598941 - (804.2 KB) - R12.ADO.B.Delta.5
+    [+] 9239089 - (2.2 MB) - R12.AD.B.delta.3
+    [+] 8919491 - (175.2 MB) - R12.ATG_PF.B.delta.3
+
+[-] 17774755 - (3.43 GB) - Oracle E-Business Suite Release 12.1.3+ Recommended Patch Collection 1 [RPC1]
+
+[-] 11868928 - (10.8 MB) - RCA:NON ASSET TAX DISTS ARE CAUSING THE PERF ISSUE FOR MASS ADDITIONS PROGRAM
+
+[-] 14466506 - (37.7 MB) - REPLACEMENT PATCH FOR BUG#14155552
+    [+] 8706842 - R12.FA.B
+
+
+Installation instructions:
+###########################################################################
+
+Path 17887429:
+===================================================================
+      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+NOTE: !! This patch is not included in prerequisites for upgrade middle tier.      !!
+      !! But I included it before upgrade and you can avoid issue with compilation !!
+      !! PLL/FMB files during RPC1 applying                                        !!
+      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
+
+pre-steps:
+----------------------------
+1. Source the Applications environment file
+2. Shutdown application services on all nodes.
+3. Enable maintenance mode
+
+Installation:
+----------------------------
+adpatch apply=yes
+
+AutoPatch:
+    u17887429.drv (This is the unified driver)
+
+
+post-steps:
+----------------------------
+Check log file for errors.
+
+
+
+Path 9239089:
+===================================================================
+
+pre-steps:
+----------------------------
+1. Source the Applications environment file
+2. Shutdown application services on all nodes.
+3. Enable maintenance mode
+4. Run the adgrants.sql script as a user that can connect as SYSDBA
+
+	4.1. Create $ORACLE_HOME/appsutil/admin on the database server (already exist)
+	4.2. Copy adgrants.sql (UNIX) from this patch directory to
+             $ORACLE_HOME/appsutil/admin.
+	4.3. Use SQL*Plus to run the script:
+
+	     UNIX:
+	     $ sqlplus /nolog
+	     SQL> @$ORACLE_HOME/appsutil/admin/adgrants.sql APPS
+
+
+Installation:
+----------------------------
+adpatch apply=yes
+
+AutoPatch:
+    u9239089.drv (This is the unified driver)
+
+
+post-steps:
+----------------------------
+Check log file for errors.
+
+
+
+Path 9239090: (main upgrade patch) Oracle E-Business Suite Release 12.1.3 Readme (Doc ID 1080973.1)
+===================================================================
+
+pre-steps:
+----------------------------
+1. Source the Applications environment file
+2. Shutdown application services on all nodes.
+3. Enable maintenance mode
+4. Apply patch 9239089 - R12.AD.B.delta.3 (should be already applied)
+5. sqlplus / as sysdba
+   SQL> alter system set _disable_fast_validate='TRUE' scope=both;
+
+
+Installation:
+----------------------------
+adpatch apply=yes
+
+AutoPatch:
+    u9239090.drv (This is the unified driver)
+
+
+post-steps:
+----------------------------
+1. re-create appsutil:
+
+	1.1 Source env. file: source ${APPL_TOP}/APPS${COTEXT_NAME}.env
+	1.2 applprd@rommt01$ perl $AD_TOP/bin/admkappsutil.pl
+	1.3 copy to database node: oraprd@romdb01$ scp applprd@rommt01:/<path>/appsutil.zip $OARCLE_HOME/
+	1.4 oraprd@romdb01$ cd $ORACLE_HOME && unzip -o appsutil.zip
+
+2. Run AutoConfig on the <RDBMS ORACLE_HOME>. 
+3. Run AutoConfig on all nodes with an Appl_Top.
+
+4. Run adpreclone.pl on the database tier and the application tier. 
+
+   cd $ORACLE_HOME/appsutil/bin/ && perl adpreclone.pl dbTier
+   cd $ADMIN_SCRIPTS_HOME && perl adpreclone.pl appsTier
+
+
+5. Generate message files for FND using FNDMDGEN.
+
+applprd@rommt01$ FNDMDGEN apps/apps 0 Y US FND
+
+6. sqlplus / as sysdba
+   SQL> alter system set _disable_fast_validate='FALSE' scope=both;
+
+7. Latest Oracle HRMS Legislative Data Patch Available (HR Global / hrglobal) (Doc ID 145837.1)
+
+8. Apply post-reqs:
+-------------------
+9817770 - (1.3 MB) - POST-R12.ATG_PF.B.DELTA.3 CONSOLIDATED PATCH
+9966055 -  (12.7 KB) - Patch 9966055: 1OFF:12.1.3:TRANSLATED VERSION OF FNDSCSGN NOT LAUNCHED
+9400185 - (6.7 MB) - ORACLE EBS APPLICATIONS TECHNOLOGY ONLINE HELP FOR 12.1.3 RELEASE UPDATE PACK
+
+
+Path 9817770:
+===================================================================
+
+Installation:
+----------------------------
+adpatch apply=yes
+
+AutoPatch:
+    u9817770.drv (This is the unified driver)
+
+post-steps:
+----------------------------
+Check log file for errors.
+
+
+Path 9966055:
+===================================================================
+
+Installation:
+----------------------------
+adpatch apply=yes
+
+AutoPatch:
+    u9966055.drv (This is the unified driver)
+
+post-steps:
+----------------------------
+Check log file for errors.
+
+
+Path 9400185:
+===================================================================
+
+Installation:
+----------------------------
+adpatch apply=yes
+
+AutoPatch:
+    u9400185.drv (This is the unified driver)
+
+post-steps:
+----------------------------
+Check log file for errors.
+
+
+Path 9239095:
+===================================================================
+
+Installation:
+----------------------------
+adpatch apply=yes
+
+AutoPatch:
+    u9239095.drv (This is the unified driver)
+
+post-steps:
+----------------------------
+Check log file for errors.
+
+
+Path 17884289:
+===================================================================
+pre-steps:
+----------------------------
+1. Source the Applications environment file
+2. Shutdown application services on all nodes.
+3. Enable maintenance mode
+4. Run the adgrants.sql script as a user that can connect as SYSDBA
+
+	4.1. Create $ORACLE_HOME/appsutil/admin on the database server (already exist)
+	4.2. Copy adgrants.sql (UNIX) from this patch directory to
+             $ORACLE_HOME/appsutil/admin.
+	4.3. Use SQL*Plus to run the script:
+
+	     UNIX:
+	     $ sqlplus /nolog
+	     SQL> @$ORACLE_HOME/appsutil/admin/adgrants.sql APPS
+
+
+Installation:
+----------------------------
+adpatch apply=yes
+
+AutoPatch:
+    u17884289.drv (This is the unified driver)
+
+
+post-steps:
+----------------------------
+Check log file for errors.
+
+
+Path 17886182:
+===================================================================
+
+Installation:
+----------------------------
+adpatch apply=yes
+
+AutoPatch:
+    u17886182.drv (This is the unified driver)
+
+post-steps:
+----------------------------
+Check log file for errors.
+
+
+Path 18598941:
+===================================================================
+
+Installation:
+----------------------------
+adpatch apply=yes
+
+AutoPatch:
+    u18598941.drv (This is the unified driver)
+
+
+post-steps:
+----------------------------
+Check log file for errors.
+
+
+Patch 17774755: [RPC1]
+===================================================================
+
+Pre-requesties:
+-----------------------------
+9239090 - (3.4 GB) - 12.1.3 ORACLE E-BUSINESS SUITE 12.1.3
+17884289 - (13.3 MB) - R12.AD.B.Delta.4
+17886182 - (748.8 KB) - R12.ADO.B.Delta.4
+18598941 - (804.2 KB) - R12.ADO.B.Delta.5
+
+
+Perform product-specific pre-install steps
+-----------------------------
+
+Checked installed products for determining which steps is required to perform:
+-----------------------------
+select a.application_short_name,a.APPLICATION_NAME,decode(fpi.status,'I','Installed','S','Shared','N','Inactive',fpi.status) status
+from apps.fnd_application_vl a, apps.fnd_product_installations fpi where 
+fpi.application_id = a.application_id and fpi.status in ('I','S') order by 3,1;
+
+SQL> spool /tmp/installed_obj.txt
+SQL> /
+SQL> spool off
+SQL> !egrep 'WMS|EGO|OZF|VCP|MTH|MWA|AP' /tmp/installed_obj.txt
+
+APPLICATIO APPLICATION_NAME                                             STATUS                                                                                                                          
+SQLAP      Payables                                                     Installed
+
+
+!!! None product-specific pre-install steps in my case. !!!
+
+
+Installation:
+----------------------------
+adpatch apply=yes
+
+AutoPatch:
+    u18598941.drv (This is the unified driver)
+
+
+
+Perform product-specific post-install steps [conditional]
+----------------------------
+
+Oracle Payables (AP) [Required]
+- - - - - - - - - - - - - - -
+Downtime Required - Yes
+
+Refer to My Oracle Support Knowledge Document 1341317.1, Performance issue with Mass Additions Create Program.
+Refer to My Oracle Support Knowledge Document 1450194.1, Allow Unallocated Misc and Freight Lines to Interface to FA: Mandatory Datafix.
+
+
+
+per MOS note:  (Doc ID 1341317.1) - "APMASSAB.pls Performance Issue with Mass Additions Create"
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+PART I ) Datafix
+================
+1) The datafix scripts are in ad parallel architecture. Before starting the action plan, decide the number of workers on which
+      the datafix scripts have to execute.
+
+     If you decide the number of workers as 4, then each script (except ap_assets_add_crt.sql) has to run in parallel 4 times in different sessions with parameters
+     Num_of_wrks = 4
+     wrk_id =  1 (for first execution)
+                   2 (for second execution) and so on  till
+                   ....
+                   4 (for fourth execution)
+
+2) Download the scripts  ap_assets_paydist_fix.zip attached to the Note
+
+3) Run the script ap_assets_add_crt.sql
+   Check whether the tables  ap_invoice_dists_16591639 and ap_invoice_payments_16591639 created or not.
+
+3) Run the selection scripts ap_assets_invdist_add.sql as many times as the number of workers are decided and pass parameters as explained.
+   Run the selection script ap_assets_paydist_add.sql as many times as the number of workers are decided and pass parameters as explained.
+   Both the selection scripts are independent, user can run them at same time.
+
+
+4) Once both the scripts got complete, Check whether the tables ap_invoice_dists_16591639 and ap_invoice_payments_16591639 are created with appropriate data or not.
+
+5) Then run the fix script ap_assets_invdist_fix.sql as many times as the number of workers are decided and pass parameters as explained
+   Run the fix script ap_assets_paydist_fix.sql as many times as the number of workers are decided and pass parameters as explained.
+   Both the Fix scripts are independent, user can run them at same time.
+
+6) Once all the steps get complete, check whether the issue got resolved or not.
+
+   You can also check the data to verify all the scripts executions by passing the scripts names to below queries. 
+   Script names are
+
+   'ap_assets_invdist_add.sql' 
+   'ap_assets_paydist_add.sql'
+   'ap_assets_paydist_fix.sql'
+   'ap_assets_invdist_fix.sql'
+
+   SELECT * FROM ad_parallel_updates
+   WHERE script_name = '&script_name';
+   
+   SELECT * FROM ad_parallel_workers 
+   WHERE update_id IN (SELECT update_id FROM ad_parallel_updates WHERE script_name = '&script_name' );
+
+   SELECT * FROM ad_parallel_updates 
+   WHERE update_id IN (SELECT update_id FROM ad_parallel_updates WHERE script_name = '&script_name' );
+
+   SELECT worker_id,status,COUNT(*) 
+   FROM ad_parallel_update_units 
+   WHERE update_id IN (SELECT update_id FROM ad_parallel_updates WHERE script_name ='&script_name') 
+   GROUP BY worker_id,status;
+
+Part II ) Patch containing the code changes
+================
+
+Download and review the readme and pre-requisites for Patch.
+
+R12.1.x : 11868928:R12.AP.B 
+
+If password is required, please log a service request with Support
+Ensure that you have taken a backup of your system before applying the recommended patch. 
+
+Apply the patch in a test environment. 
+
+Confirm the following file versions:
+
+apmassab.pls 120.19.12000000.39 (R12.0.x) 
+apmassab.pls 120.22.12010000.28 (R12.1.x)
+
+You can use the commands like the following: 
+strings -a $AP_TOP/patch/115/sql/apmassab.pls |grep '$Header' 
+
+Retest the issue. 
+
+Migrate the solution as appropriate to other environments.
+
+
+Scripts can be downloaded on the bottom of MOS note.
+
+Attachments
+------------------------------------ 
+FILE Scripts for the datafix(5.98 KB)
+
+
+
+per MOS note:  (Doc ID 1450194.1) - "R12: New Functionality APMACR: Allow Unallocated Misc and Freight Lines to Interface
+                                     to FA - Mandatory Datafix Before Running Mass Additions Create Program After Patch 14466506"
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Download and apply patch 14466506, datafix will be described in Installation instruction for this patch
+Please see below after patch '11868928'.
+
+
+
+
+
+Patch 11868928:
+===================================================================
+
+Pre-requesties:
+----------------------------
+Run data fix as detailed in Doc ID 1341317.1  (should be already performed as part of post-steps for patch 17774755)
+
+Installation:
+----------------------------
+adpatch apply=yes
+
+
+post-steps:
+----------------------------
+Check log file for errors.
+
+Check the file versions , they have to be the same as mentioned above.
+
+patch/115/sql/apmassab.pls   120.22.12010000.28
+
+
+Patch 14466506:
+===================================================================
+
+Pre-requisite or Co-requisite:
+----------------------------
+Consolidated Patch for 12.1.1 September 2009 : 8706842:R12.FA.B
+
+
+Installation:
+----------------------------
+adpatch apply=yes
+
+
+post-steps:
+----------------------------
+Please follow the instructions as per the NOTE 1450194.1
+
+1. In order to use this feature, the "Allow Unallocated Line Types" flag needs to be enabled for the book in FA Book Controls window.
+
+Fixed Assets Resp > Setup > Asset System > Book Controls
+
+2. DATA FIX:
+
+   2.1. Download the two attachments ap_unallocated_charges_assets_add_sel.sql and ap_unallocated_charges_assets_add_fix.sql from this article.
+
+   2.2. Run selection script ap_unallocated_charges_assets_add_sel.sql to select all those existing non-allocated distribution lines which satisfy 
+        the mass additions criteria and put them in the B13821160_AP_DISTRIBUTIONS table.
+
+   2.3. The user should review and identify those lines which they require to be interfaced to Fixed Assets and set the UPDATE_ASSETS_ADDITION_FLAG
+        in B13821160_AP_DISTRIBUTIONS table to"N" for such lines. 
+        The default value of the UPDATE_ASSETS_ADDITION_FLAG will be "Y" (for the lines that should not be interfaced).
+
+   2.4. Run the ap_unallocated_charges_assets_add_fix.sql. This will update the ASSETS_ADDITION_FLAG in AP_INVOICE_DISTRIBUTIONS_ALL to "N" 
+        for all those lines in the B13821160_AP_DISTRIBUTIONS table where UPDATE_ASSETS_ADDITION_FLAG is set to "Y".
+        This will prevent such lines from being processed by the Mass Additions Create process. 
+
+        All other invoice distributions that have not previously been rejected by APMACR will still have an ASSETS_ADDITION_FLAG set to U(ntested)
+        and will automatically be considered the next time APMACR is ran.
+
+   2.5. After Patch 14466506 has been applied, run the Mass Additions Create program which will now consider the newly updated distributions lines.
+
+FIX scripts can be donwloaded from bottom of MOS note:
+Attachments
+----------------------------
+FILE Fix(2.45 KB)
+FILE Selection(3.6 KB)
+
+
+Check the file versions , they have to be the same as given below.
+-----------------------------
+patch/115/sql/apetxsrb.pls  120.115.12010000.105
+patch/115/sql/apetxsrs.pls  120.10.12010000.9
+patch/115/sql/apetxutb.pls  120.102.12010000.82
+patch/115/sql/apetxuts.pls  120.15.12010000.9
+
+
+###########################################################################
+###########################################################################
+##                              SUMMARY                                  ##
+###########################################################################
+###########################################################################
+
+17887429 - Size: 44.3 MB  - 1OFF:17887429 : ERROR WHEN APPLYING PATCH 17839156
+9239089  - Size: 2.2 MB   - R12.AD.B.delta.3 Oracle Applications DBA 12.1.3 Product Release Update Pack
+9239090  - Size: 3.4 GB   - 12.1.3	ORACLE E-BUSINESS SUITE 12.1.3 RELEASE UPDATE PACK
+9817770  - Size: 1.3 MB   - POST-R12.ATG_PF.B.DELTA.3 CONSOLIDATED PATCH
+9966055  - Size: 12.7 KB  - Patch 9966055: 1OFF:12.1.3:TRANSLATED VERSION OF FNDSCSGN NOT LAUNCHED
+9400185  - Size: 6.7 MB   - ORACLE EBS APPLICATIONS TECHNOLOGY ONLINE HELP FOR 12.1.3 RELEASE UPDATE PACK
+9239095  - Size: 57.7 MB  - Oracle E-Business Suite Online Help for 12.1.3 Release Update Pack
+17884289 - Size: 13.3 MB  - R12.AD.B.Delta.4
+17886182 - Size: 748.8 KB - R12.ADO.B.Delta.4
+18598941 - Size: 804.2 KB - R12.ADO.B.Delta.5
+17774755 - Size: 3.43 GB  - Oracle E-Business Suite Release 12.1.3+ Recommended Patch Collection 1 [RPC1]
+11868928 - Size: 10.8 MB  - RCA:NON ASSET TAX DISTS ARE CAUSING THE PERF ISSUE FOR MASS ADDITIONS PROGRAM
+14466506 - Size: 37.7 MB  - REPLACEMENT PATCH FOR BUG#14155552
+
+
+
+
+
+###########################################################################
+###########################################################################
+##                              PATCHING                                 ##
+###########################################################################
+###########################################################################
+
+I. - Download and install Oracle E-Business Suite Release 12.1.1
+
+I.I Downloaded and unpacked following files:
+=====================================================================
+rgolovko@Samsung:/media/rgolovko/Oracle_Data/FILES_TMP/DISK/ORA_FILES/FND$ du -sh *
+---------------------------------------------------------------------------
+Size    Name
+------- -------------------------------------------------------------------
+30M	01 - Oracle E-Business Suite Release 12.1.1 Rapid Install Start Here (Part 1 of 4) - B53824-01_1of4.zip
+98M	02 - Oracle E-Business Suite Release 12.1.1 Rapid Install Start Here (Part 2 of 4) - B53824-01_2of4.zip
+394M	03 - Oracle E-Business Suite Release 12.1.1 Rapid Install Start Here (Part 3 of 4) - B53824-01_3of4.zip
+82M	04 - Oracle E-Business Suite Release 12.1.1 Rapid Install Start Here (Part 4 of 4) - B53824-01_4of4.zip
+1,7G	05 - Oracle E-Business Suite Release 12.1.1 for Linux x86 Rapid Install RDBMS - Disk 1 (Part 1 of 3) - V15576-01_1of3.zip
+1,3G	06 - Oracle E-Business Suite Release 12.1.1 for Linux x86 Rapid Install RDBMS - Disk 1 (Part 2 of 3) - V15576-01_2of3.zip
+660M	07 - Oracle E-Business Suite Release 12.1.1 for Linux x86 Rapid Install RDBMS - Disk 1 (Part 3 of 3) - V15576-01_3of3.zip
+1,2G	08 - Oracle E-Business Suite Release 12.1.1 for Linux x86 Rapid Install Databases - Disk 1 (Part 1 of 3) - V15564-01_1of3.zip
+1,6G	09 - Oracle E-Business Suite Release 12.1.1 for Linux x86 Rapid Install Databases - Disk 1 (Part 2 of 3) - V15564-01_2of3.zip
+865M	10 - Oracle E-Business Suite Release 12.1.1 for Linux x86 Rapid Install Databases - Disk 1 (Part 3 of 3) - V15564-01_3of3.zip
+1,5G	11 - Oracle E-Business Suite Release 12.1.1 for Linux x86 Rapid Install Databases - Disk 2 (Part 1 of 2) - V15565-01_1of2.zip
+1,5G	12 - Oracle E-Business Suite Release 12.1.1 for Linux x86 Rapid Install Databases - Disk 2 (Part 2 of 2) - V15565-01_2of2.zip
+1,2G	13 - Oracle E-Business Suite Release 12.1.1 for Linux x86 Rapid Install Databases - Disk 3 (Part 1 of 3) - V15566-01_1of3.zip
+1,5G	14 - Oracle E-Business Suite Release 12.1.1 for Linux x86 Rapid Install Databases - Disk 3 (Part 2 of 3) - V15566-01_2of3.zip
+1,1G	15 - Oracle E-Business Suite Release 12.1.1 for Linux x86 Rapid Install Databases - Disk 3 (Part 3 of 3) - V15566-01_3of3.zip
+1,7G	16 - Oracle E-Business Suite Release 12.1.1 for Linux x86 Rapid Install Databases - Disk 4 (Part 1 of 3) - V15567-01_1of3.zip
+1,6G	17 - Oracle E-Business Suite Release 12.1.1 for Linux x86 Rapid Install Databases - Disk 4 (Part 2 of 3) - V15567-01_2of3.zip
+502M	18 - Oracle E-Business Suite Release 12.1.1 for Linux x86 Rapid Install Databases - Disk 4 (Part 3 of 3) - V15567-01_3of3.zip
+1,6G	19 - Oracle E-Business Suite Release 12.1.1 for Linux x86 Rapid Install Databases - Disk 5 (Part 1 of 3) - V15568-01_1of3.zip
+1,6G	20 - Oracle E-Business Suite Release 12.1.1 for Linux x86 Rapid Install Databases - Disk 5 (Part 2 of 3) - V15568-01_2of3.zip
+493M	21 - Oracle E-Business Suite Release 12.1.1 for Linux x86 Rapid Install Databases - Disk 5 (Part 3 of 3) - V15568-01_3of3.zip
+1,6G	22 - Oracle E-Business Suite Release 12.1.1 for Linux x86 Rapid Install Databases - Disk 6 (Part 1 of 3) - V15569-01_1of3.zip
+1,7G	23 - Oracle E-Business Suite Release 12.1.1 for Linux x86 Rapid Install Databases - Disk 6 (Part 2 of 3) - V15569-01_2of3.zip
+748M	24 - Oracle E-Business Suite Release 12.1.1 for Linux x86 Rapid Install Databases - Disk 6 (Part 3 of 3) - V15569-01_3of3.zip
+1,5G	25 - Oracle E-Business Suite Release 12.1.1 for Linux x86 Rapid Install Databases - Disk 7 (Part 1 of 3) - V15570-01_1of3.zip
+1,4G	26 - Oracle E-Business Suite Release 12.1.1 for Linux x86 Rapid Install Databases - Disk 7 (Part 2 of 3) - V15570-01_2of3.zip
+786M	27 - Oracle E-Business Suite Release 12.1.1 for Linux x86 Rapid Install Databases - Disk 7 (Part 3 of 3) - V15570-01_3of3.zip
+1,4G	28 - Oracle E-Business Suite Release 12.1.1 for Linux x86 Rapid Install Databases - Disk 8 (Part 1 of 3) - V15571-01_1of3.zip
+1,8G	29 - Oracle E-Business Suite Release 12.1.1 for Linux x86 Rapid Install Databases - Disk 8 (Part 2 of 3) - V15571-01_2of3.zip
+912M	30 - Oracle E-Business Suite Release 12.1.1 for Linux x86 Rapid Install Databases - Disk 8 (Part 3 of 3) - V15571-01_3of3.zip
+1,5G	31 - Oracle E-Business Suite Release 12.1.1 for Linux x86 Rapid Install Databases - Disk 9 (Part 1 of 3) - V15572-01_1of3.zip
+1,6G	32 - Oracle E-Business Suite Release 12.1.1 for Linux x86 Rapid Install Databases - Disk 9 (Part 2 of 3) - V15572-01_2of3.zip
+492M	33 - Oracle E-Business Suite Release 12.1.1 for Linux x86 Rapid Install Databases - Disk 9 (Part 3 of 3) - V15572-01_3of3.zip
+1,7G	34 - Oracle E-Business Suite Release 12.1.1 for Linux x86 Rapid Install Tools - Disk 1 - V15575-01.zip
+1,6G	35 - Oracle E-Business Suite Release 12.1.1 for Linux x86 Rapid Install APPL_TOP - Disk 1 (Part 1 of 3) - V15573-01_1of3.zip
+1,7G	36 - Oracle E-Business Suite Release 12.1.1 for Linux x86 Rapid Install APPL_TOP - Disk 1 (Part 2 of 3) - V15573-01_2of3.zip
+566M	37 - Oracle E-Business Suite Release 12.1.1 for Linux x86 Rapid Install APPL_TOP - Disk 1 (Part 3 of 3) - V15573-01_3of3.zip
+1,3G	38 - Oracle E-Business Suite Release 12.1.1 for Linux x86 Rapid Install APPL_TOP - Disk 2 (Part 1 of 3) - V15574-01_1of3.zip
+1,3G	39 - Oracle E-Business Suite Release 12.1.1 for Linux x86 Rapid Install APPL_TOP - Disk 2 (Part 2 of 3) - V15574-01_2of3.zip
+1,2G	40 - Oracle E-Business Suite Release 12.1.1 for Linux x86 Rapid Install APPL_TOP - Disk 2 (Part 3 of 3) - V15574-01_3of3.zip
+459M	41 - Oracle E-Business Suite Release 12.1.1 Documentation Library - B53825-01.zip
+451M	42 - Oracle Database Lite 10g Release 3 (10.3.0.2.0) for Linux X86-AMD-64 (CD) - B50876-01.zip
+550M	43 - Oracle® Application Server 10g (10.1.2.0.2) for Linux x86 (32-bit) (CD 1 of 4) - B24483-01.zip
+576M	44 - Oracle® Application Server 10g (10.1.2.0.2) for Linux x86 (32-bit) (CD 2 of 4) - B24484-01.zip
+413M	45 - Oracle® Application Server 10g (10.1.2.0.2) for Linux x86 (32-bit) (CD 3 of 4) - B24485-01.zip
+429M	46 - Oracle® Application Server 10g (10.1.2.0.2) for Linux x86 (32-bit) (CD 4 of 4) - B24486-01.zip
+548M	47 - Oracle® Warehouse Builder 10g (10.1.0.4.0) for Linux x86 - B24995-01.zip
+---------------------------------------------------------------------------
+
+I.II - Prepare guest systems to install.
+=====================================================================
+
+Installed following rpm-packages on both systems romdb01 and rommt01:
+---------------------------------------------------------------------
+binutils-2.17.50.0.6-26.el5 
+compat-libstdc++-33-3.2.3-61 
+elfutils-libelf-0.137-3.el5 
+elfutils-libelf-devel-0.137-3.el5 
+gcc-4.1.2-54.el5 
+gcc-c++-4.1.2-54.el5 
+glibc-2.5-65 
+glibc-common-2.5-65 
+glibc-devel-2.5-65 
+glibc-headers-2.5-65 
+ksh-20100202-1.el5_6.6 
+libaio-0.3.106-5 
+libaio-devel-0.3.106-3.2 
+libgcc-4.1.2-54.el5 
+libstdc++-4.1.2-54.el5 
+libstdc++-devel-4.1.2-54.el5 
+make-3.81-3.el5 
+sysstat-7.0.2-1.el5 
+unixODBC-2.2.11-10.el5 
+unixODBC-devel-2.2.11-10.el5 
+openmotif21-2.1.30-11.EL5  << Installed only on rommt01
+
+ldconfig -v (as root)
+
+Add aliases on nodes to hosts file on both nodes:
+-------------------------------------------------
+vi /etc/hosts
+
+# Do not remove the following line, or various programs
+# that require network functionality will fail.
+127.0.0.1        localhost.localdomain localhost
+::1             localhost6.localdomain6 localhost6
+192.168.0.5 rommt01.rgolovko.com rommt01
+192.168.0.2 romdb01.rgolovko.com romdb01
+
+Set following kernel parameters:
+--------------------------------------------------
+[applprd@rommt01 ~]$ cat /etc/sysctl.conf | sed '/#/d; /^$/d'
+
+net.ipv4.ip_forward = 0
+net.ipv4.conf.default.rp_filter = 2
+net.ipv4.conf.default.accept_source_route = 0
+kernel.core_uses_pid = 1
+net.ipv4.tcp_syncookies = 1
+kernel.msgmax = 65536
+fs.file-max = 6815744
+kernel.msgmni = 2878
+kernel.msgmnb = 65536
+kernel.sem = 250 32000 100 142
+kernel.shmmni = 4096
+kernel.shmall = 1073741824
+kernel.shmmax = 4294967295
+kernel.sysrq = 1
+net.core.rmem_default = 262144
+net.core.rmem_max = 4194304
+net.core.wmem_default = 262144
+net.core.wmem_max = 1048576
+fs.aio-max-nr = 3145728
+net.ipv4.ip_local_port_range = 9000 65500
+vm.min_free_kbytes = 51200
+
+Set system limits for users:
+----------------------------------------------------
+For application owner on rommt01:
+---------------------------------
+[applprd@rommt01 ~]$ cat /etc/security/limits.conf |sed '/#/d; /^$/d'
+applprd   soft   nofile    131072
+applprd   hard   nofile    131072
+applprd   soft   nproc    131072
+applprd   hard   nproc    131072
+applprd   soft   core    unlimited
+applprd   hard   core    unlimited
+applprd   soft   memlock    3500000
+applprd   hard   memlock    3500000
+
+For database owner on romdb01:
+------------------------------
+[oraprd@romdb01 ~]$ cat /etc/security/limits.conf |sed '/#/d; /^$/d'
+oraprd   soft   nofile    131072
+oraprd   hard   nofile    131072
+oraprd   soft   nproc    131072
+oraprd   hard   nproc    131072
+oraprd   soft   core    unlimited
+oraprd   hard   core    unlimited
+oraprd   soft   memlock    3500000
+oraprd   hard   memlock    3500000
+
+
+Prepare mountpints:
+-------------------
+For example rommt01:
+-------------------
+mkdir -p /rgolovko/apps -m 775
+chown -R applprd:dba /rgolovko/apps
+
+fdisk /dev/sdc
+answers: n,p,enter,enter,w   
+(n crete new partition, p - primary, start sector, use default <enter>, end sector, use default <enter>, w - write changes)
+
+mkfs.ext3 /dev/sdc1
+
+add line to /etc/fstab
+
+/dev/sdc1 /rgolovko/apps ext3 rw,sync,acl 0 0
+
+Similar actions for romdb01:
+---------------------------
+mkdir -p /rgolovko/app_db -m 775
+chown oraprd:dba -R /rgolovko/app_db
+
+fdisk /dev/sdc
+answers: n,p,enter,enter,w   
+(n crete new partition, p - primary, start sector, use default <enter>, end sector, use default <enter>, w - write changes)
+
+mkfs.ext3 /dev/sdc1
+
+add line to /etc/fstab
+
+
+/dev/sdc1 /rgolovko/app_db ext3 rw,sync,acl 0 0
+
+I.III Installing EBS R12
+=====================================================================
+root@romdb01# mkdir /Stage
+
+mount via VirtualBox GUI usb disk to romdb01.
+
+umount -l /dev/sda1
+
+mount /dev/sda1 /Stage -t ext3
+
+chown -R oraprd:dba /Stage
+
+su - oraprd
+
+cd /Stage/Oracle_Data/FILES_TMP/Stage/startCD/Disk1/rapidwiz
+
+./rapidwiz
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+First window:  Introduction to install
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Click button "Next"
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Second window: Select wizard operation
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+I marked "Install Oracle Application Release 12.1.1"
+
+Then click "Next"
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Third window: Provide your email address...
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+I skipped this frame so as I don't have account on MOS.
+
+click "Next"
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Fourth window: Configuration choice
+
+Choose my configuraion file which attached to email.
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+After database successful istallation re-mounted usb disk to
+ 
+rommt01 with same path.
+
+and did the same actions
+

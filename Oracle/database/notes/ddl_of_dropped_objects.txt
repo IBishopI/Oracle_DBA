@@ -1,0 +1,41 @@
+#################################################################
+DDL from droped object (from roll back segment)
+#################################################################
+
+SQL> select text from dba_source where name='UPD_SALES' order by line;
+~~~~~~~~~
+TEXT
+--------------------------------------------------------------------------------
+procedure upd_sales as
+begin
+for i in 1..10000 loop
+update sales set amount_sold=amount_sold*1 where rownum<2;
+commit;
+end loop;
+end;
+
+7 rows selected.
+
+SQL> drop procedure upd_sales;
+~~~~~~~~~~
+Procedure dropped.
+
+SQL> connect / as sysdba
+~~~~~~~~~~
+Connected.
+
+SQL> select text from dba_source 
+     as of timestamp systimestamp - interval '5' minute  -- object was dropped less then 5 minutes ago
+     where name='UPD_SALES' order by line;
+~~~~~~~~~~
+TEXT
+--------------------------------------------------------------------------------
+procedure upd_sales as
+begin
+for i in 1..10000 loop
+update sales set amount_sold=amount_sold*1 where rownum<2;
+commit;
+end loop;
+end;
+
+7 rows selected.

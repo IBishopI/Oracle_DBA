@@ -1,0 +1,19 @@
+###############################################################
+SSL fast check:
+###############################################################
+egrep -i 's_web_ssl_directory|s_url_protocol|s_local_url_protocol|s_webssl_port|s_active_webport|s_webssl_port|s_webport' $CONTEXT_FILE
+
+egrep -i 's_webentryhost|s_webentrydomainto|s_active_webportto|s_webentryurlprotocol|s_login_page' $CONTEXT_FILE 
+
+
+1. s_webentryhost  to load balancer name
+2. s_webentrydomainto load balancer domain-name
+3. s_active_webportto load balancer port
+4. s_webentryurlprotocol  to load balancer protocol https or http
+5. s_login_page  to $s_webentryurlprotocol://$s_webentryhost.$s_webentrydomain:$s_activewebport/oa_servlets/AppsLogin
+
+Other similar parameter in context file which you don’t change
+
+s_webhost : Actual Host Name of Server on which 11i is installed
+s_webdomain: Actual Domain-name of Server on which 11i is installed
+s_webport : actual port on which HTTP Server for 11i is listening

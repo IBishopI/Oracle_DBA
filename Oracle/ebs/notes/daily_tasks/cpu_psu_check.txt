@@ -1,0 +1,6 @@
+col VERSION for a8
+col BUNDLE_SERIES for a14
+col COMMENTS for a20
+set lines 200
+select comments, version, bundle_series from sys.registry$history where bundle_series
+ in ('PSU','CPU') order by action_time;

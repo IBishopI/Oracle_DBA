@@ -1,0 +1,8 @@
+#################################################################
+Unxpire db account: 10g 11g - password type
+#################################################################
+select USERNAME,ACCOUNT_STATUS,LOCK_DATE,EXPIRY_DATE from dba_users where USERNAME like '%APEX%';
+
+SELECT 'ALTER USER '|| name ||' IDENTIFIED BY VALUES '''|| spare4 ||';'|| password ||''';' FROM sys.user$ WHERE name='APEX_PUBLIC_USER';
+
+select USERNAME,ACCOUNT_STATUS,LOCK_DATE,EXPIRY_DATE from dba_users where USERNAME like '%APEX%';

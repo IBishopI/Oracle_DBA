@@ -1,0 +1,45 @@
+###############################################################################################
+Tablespace:
+###############################################################################################
+1. check backup:
+
+!ps -ef|egrep -i 'back|rman' 
+
+2. Check db_name/status:
+ 
+select d.NAME,d.OPEN_MODE,i.status from v$database d, v$instance i where d.NAME=i.instance_name;
+
+3. Show datafiles from tablespace which needed: 
+
+col file_name format a45;
+set linesize 135;
+select FILE_NAME,BYTES/1024/1024,AUTOEXTENSIBLE,MAXBYTES/1024/1024 from dba_data_files where TABLESPACE_NAME='TBS_NAME' order by 1;
+
+
+select tablespace_name,used_percent from dba_tablespace_usage_metrics where tablespace_name='TBS_NAME';
+
+4. Checking diskspace in DATA_TOP:
+
+!df -h /u01/db/tech_st/data/
+
+5. Checking name of datafile
+
+select FILE_NAME from dba_data_files where FILE_NAME like '%system0001.dbf%';
+
+6. Adding/Resize datafile per operator help if it exixst.
+
+Simple daatafile:
+-------------------------------------------------------------
+alter tablespace TBS_NAME add datafile '/u01/db/tech_st/data/system01.dbf' size 2000M;
+
+Resize datafile:
+-------------------------------------------------------------
+alter database datafile '/u01/db/tech_st/data/system01.dbf' resize 2000M;
+
+Autoextensible datafile:
+-------------------------------------------------------------
+alter tablespace TBS_NAME add datafile '/u01/db/tech_st/data/system01.dbf' size 50M autoextend on next 10M maxsize 5000M;
+
+ASM:
+-------------------------------------------------------------
+alter tablespace TBS_NAME add datafile '+VHASAPDATA' size 50M autoextend on next 10M maxsize 8000M;

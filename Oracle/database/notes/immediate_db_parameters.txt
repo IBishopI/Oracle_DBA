@@ -1,0 +1,6 @@
+#################################################################
+Parameters which can change without bounce.
+#################################################################
+col NAME for a26
+col VALUE for a12
+select name,value,ISSYS_MODIFIABLE from v$parameter2 where name in('sga_max_size','utl_file_dir');

@@ -1,0 +1,38 @@
+#################################################################
+SQLADVISOR
+#################################################################
+SELECT SNAP_ID
+FROM DBA_HIST_SQLSTAT
+WHERE SQL_ID='fmfaajqqqkvks'
+ORDER BY SNAP_ID;
+
+
+
+SET SERVEROUTPUT ON
+DECLARE
+L_SQL_TUNE_TASK_ID VARCHAR2(100);
+BEGIN
+L_SQL_TUNE_TASK_ID := DBMS_SQLTUNE.CREATE_TUNING_TASK (
+--BEGIN_SNAP=>13164,
+--END_SNAP=>13175,
+SQL_ID => '6sq00ts4cg2tx',
+SCOPE => DBMS_SQLTUNE.SCOPE_COMPREHENSIVE,
+TIME_LIMIT => 600,
+TASK_NAME => '6sq00ts4cg2tx_task_BG',
+DESCRIPTION => 'Tuning task for 6sq00ts4cg2tx');
+DBMS_OUTPUT.PUT_LINE('l_sql_tune_task_id: ' || L_SQL_TUNE_TASK_ID);
+END;
+/
+
+l_sql_tune_task_id: 6sq00ts4cg2tx_task_BG
+
+
+Execute dbms_sqltune.Execute_tuning_task (task_name => '6sq00ts4cg2tx_task_BG');
+
+
+spool /tmp/sql_fmfaajqqqkvks.txt
+
+set long 65536
+set longchunksize 65536
+set linesize 150
+select dbms_sqltune.report_tuning_task('fmfaajqqqkvks_task') AS recommendations FROM dual;

@@ -1,0 +1,53 @@
+###############################################################################################
+JRE / jre Update:
+###############################################################################################
+
+==============================================================================
+Shut down applications
+==============================================================================
+
+
+cd $ADMIN_SCRIPTS_HOME
+./adcmctl.sh abort apps/$pass
+
+ensure no FNDLIBR processes still running
+
+ps -ef | grep FNDLIBR
+
+./adstpall.sh apps/$pass
+
+==============================================================================
+Download the Java Runtime Environment (JRE) 6 plug-in at, _http://www.oracle.com/technetwork/java/javase/downloads/index.html
+==============================================================================
+
+Downloaded jre-6u51-windows-i586.exe
+
+==============================================================================
+Rename the downloaded JRE Native plug-in file from jre-6_uX-windows-i586-p.exe to j2se160X.exe
+==============================================================================
+
+cp jre-6u51-windows-i586.exe j2se16051.exe
+
+==============================================================================
+Place the JRE 6 Plug-in on the Web Application Tier
+==============================================================================
+
+Move the j2se160X.exe file to the web application tier and place it in $[COMMON_TOP]/util/jinitiator.
+
+cp j2se16051.exe $COMMON_TOP/util/jinitiator
+
+==============================================================================
+Run the txkSetPlugin.sh Script:
+==============================================================================
+---
+cd $FND_TOP/bin
+
+./txkSetPlugin.sh 16051
+
+egrep -i "error|fail|ora-|ac-" logname | grep -v "ERRORCODE = 0"
+egrep -i "error|fail|ora-|ac-" logname | grep -v "ERRORCODE = 0"
+
+==============================================================================
+Startup applications
+==============================================================================
+$COMMON_TOP/admin/scripts/$CONTEXT_NAME/adstrtal.sh apps/$pass

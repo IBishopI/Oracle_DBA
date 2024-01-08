@@ -1,0 +1,8 @@
+#################################################################
+UNDO usage in the past per sql_id
+#################################################################
+in my case sql_id = 2b7d6dhgmjh3d
+
+select MAXQUERYID,sum((UNDOBLKS*(select VALUE from v$parameter where NAME ='db_block_size'))/1024/1024) "Used_MB",
+to_char(min(BEGIN_TIME),'DD-MM-YY HH24:MI:SS') "Start_Time",
+to_char(max(END_TIME),'DD-MM-YY HH24:MI:SS') "End_Time" from V$UNDOSTAT where MAXQUERYID = '2b7d6dhgmjh3d' group by MAXQUERYID;

@@ -1,0 +1,12 @@
+#################################################################
+Select grants:
+#################################################################
+set heading off
+set pages 0
+set long 9999999
+select dbms_metadata.get_granted_ddl('ROLE_GRANT', 'PPAUL')  
+from dual;
+select dbms_metadata.get_granted_ddl('SYSTEM_GRANT', 'PPAUL')  
+from dual;
+select dbms_metadata.get_granted_ddl('OBJECT_GRANT', 'PPAUL')  
+from dual;

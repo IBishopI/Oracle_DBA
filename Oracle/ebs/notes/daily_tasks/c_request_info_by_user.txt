@@ -1,0 +1,26 @@
+#################################################################
+Request info by name and user:
+#################################################################
+col "User" format a10;
+col "Responsibility Used" format a20;
+col "Concurrent Program Name" format a20;
+SELECT fcr.request_id "Request ID", fcpt.user_concurrent_program_name "Concurrent Program Name",fu.user_name "User", DECODE(fcr.phase_code,'C',  'Completed', 'P',  'Pending', 'R',  'Running', 'I', 'Inactive', fcr.phase_code) "Phase",
+DECODE(fcr.status_code, 'A',  'Waiting', 'B',  'Resuming', 'C',  'Normal', 'D',  'Cancelled', 'E',  'Error', 'F',  'Scheduled', 'G',  'Warning', 'H',  'On Hold',
+ 'I',  'Normal', 'M',  'No Manager', 'Q',  'Standby', 'R',  'Normal', 'S',  'Suspended', 'T',  'Terminating', 'U',  'Disabled', 'W',  'Paused', 'X',  'Terminated', 'Z',  'Waiting', fcr.status_code)  "Status",
+       fcr.request_date                       "Request Date",
+       fcr.requested_start_date               "Request Start Date",
+        fcr.hold_flag                         "Hold Flag",
+case
+when fcr.phase_code='C' then round((fcr.ACTUAL_COMPLETION_DATE - fcr.ACTUAL_START_DATE)*60*24)
+when fcr.phase_code!='C' then  round((sysdate - fcr.ACTUAL_START_DATE)*60*24)
+end "Dur. Min"
+  FROM apps.fnd_user                    fu,
+       apps.fnd_responsibility_tl       frt,
+       apps.fnd_concurrent_requests     fcr,
+       apps.fnd_concurrent_programs_tl  fcpt
+ WHERE fu.user_id                 =  fcr.requested_by
+   AND fcr.concurrent_program_id  =  fcpt.concurrent_program_id
+   AND fcr.responsibility_id      =  frt.responsibility_id
+   AND frt.LANGUAGE               =  USERENV('LANG')
+   AND fcpt.LANGUAGE              =  USERENV('LANG')
+   AND fcpt.user_concurrent_program_name like 'TBS - PARTES PICKING V.7%' and fu.user_name='EAVILAO' ORDER BY fcr.request_date DESC;

@@ -1,0 +1,19 @@
+###############################################################################################
+Concurrent managers status:
+###############################################################################################
+
+set pagesize 200;
+col "Concurrent Manager" format a50;
+select user_concurrent_queue_name "Concurrent Manager", running_processes "ACTUAL", max_processes "TARGET" from apps.fnd_concurrent_queues_vl where max_processes >'0' or running_processes >'0';
+
+Killing proces in database:
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+select CONCURRENT_PROCESS_ID,process_status_code,substr(os_process_id,1,10) from fnd_concurrent_processes where os_process_id in ('&1');
+
+update fnd_concurrent_processes set process_status_code='K' where os_process_id in ('&1');
+
+If actual less then target (workaround)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+select CONCURRENT_QUEUE_NAME,RUNNING_PROCESSES,MAX_PROCESSES from fnd_concurrent_queues where CONCURRENT_QUEUE_NAME like 'CUST_SLOW%';
+
+update fnd_concurrent_queues  set RUNNING_PROCESSES='9' where CONCURRENT_QUEUE_NAME='CUST_SLOW';

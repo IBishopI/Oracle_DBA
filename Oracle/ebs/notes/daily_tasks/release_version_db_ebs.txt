@@ -1,0 +1,5 @@
+-- release app/db
+-- ~~~~~~~~~~~~~~~
+select vi.instance_name, fpg.release_name, vi.host_name, vi.startup_time, vi.version 
+from fnd_product_groups fpg, v$instance vi
+where upper(substr(fpg.APPLICATIONS_SYSTEM_NAME,1,4)) = upper(substr(vi.INSTANCE_NAME,1,4));

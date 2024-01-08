@@ -1,0 +1,191 @@
+###############################################################################################
+UNDO / Undo retention:
+###############################################################################################
+
+Undo tablespace usage:
+----------------------------------------------
+SELECT d.tablespace_name, round(((NVL(f.bytes,0) + (a.maxbytes - a.bytes))/1048576+ u.exp_space),2)
+as max_free_mb, round(((a.bytes - (NVL(f.bytes,0)+ (1024*1024*u.exp_space)))*100/a.maxbytes),2)
+used_pct FROM   sys.dba_tablespaces d, (select tablespace_name, sum(bytes) bytes,
+sum(greatest(maxbytes,bytes)) maxbytes from sys.dba_data_files group by tablespace_name) a,
+(select tablespace_name, sum(bytes) bytes from sys.dba_free_space group by tablespace_name) f ,
+(select tablespace_name , sum(blocks)*8/(1024)  exp_space from 
+dba_undo_extents where status NOT IN ('ACTIVE','UNEXPIRED')  group by  tablespace_name) u
+WHERE d.tablespace_name = a.tablespace_name(+) AND d.tablespace_name = f.tablespace_name(+)
+AND d.tablespace_name=u.tablespace_name  AND d.contents = 'UNDO' AND u.tablespace_name = (select UPPER(value)
+from v$parameter where name = 'undo_tablespace');
+
+
+
+
+
+-------------------------------------------------
+	Default UNDO_RETENTION: 900 (15 min)     
+-------------------------------------------------
+	Syntax to change:                         
+	ALTER SYSTEM SET UNDO_RETENTION = 900;   
+-------------------------------------------------
+
+Formulas:
+OPTIMAL UNDO RETENTION = Actual Undo Size / (DB_BLOCK_SIZE * UNDO_BLOCK_PER_SEC)
+
+UNDO SIZE = (Optimal Undo Retention * DB_BLOCK_SIZE * UNDO_BLOCK_PER_SEC)
+
+
+------------------------------------------------------------------------------------------
+__________________________ Actual UNDO SIZE ______________________________________
+
+ 
+SELECT SUM(a.bytes) "UNDO_SIZE" FROM v$datafile a, v$tablespace b, dba_tablespaces c 
+WHERE c.contents = 'UNDO' AND c.status = 'ONLINE' AND b.name = c.tablespace_name 
+AND a.ts# = b.ts#;
+
+------------------------------------------------------------------------------------------
+_____________________________ DB Block Size _____________________________________
+
+SELECT TO_NUMBER(value) "DB_BLOCK_SIZE [KByte]" FROM v$parameter WHERE name = 'db_block_size';
+
+
+------------------------------------------------------------------------------------------
+_________________________ Undo Blocks per Second ________________________________
+
+
+SELECT MAX(undoblks/((end_time-begin_time)*3600*24)) "UNDO_BLOCK_PER_SEC" FROM v$undostat;
+
+------------------------------------------------------------------------------------------
+___________________ Optimal Undo Retention Calculation __________________________
+
+SELECT d.undo_size/(1024*1024) "ACTUAL UNDO SIZE [MByte]",
+    SUBSTR(e.value,1,25)    "UNDO RETENTION [Sec]",
+    ROUND((d.undo_size / (to_number(f.value) *
+    g.undo_block_per_sec)))"OPTIMAL UNDO RETENTION [Sec]"
+  FROM (
+       SELECT SUM(a.bytes) undo_size
+          FROM v$datafile a,
+               v$tablespace b,
+               dba_tablespaces c
+         WHERE c.contents = 'UNDO'
+           AND c.status = 'ONLINE'
+           AND b.name = c.tablespace_name
+           AND a.ts# = b.ts#
+       ) d,
+       v$parameter e,
+       v$parameter f,
+       (
+       SELECT MAX(undoblks/((end_time-begin_time)*3600*24))undo_block_per_sec
+       FROM v$undostat
+       ) g
+WHERE e.name = 'undo_retention'
+  AND f.name = 'db_block_size';
+
+
+------------------------------------------------------------------------------------------
+If you are not limited by disk space, then it would be better to choose the UNDO_RETENTION time
+that is best for you (for FLASHBACK, etc.). Allocate the appropriate size to the UNDO tablespace
+according to the database activity:
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+SELECT d.undo_size/(1024*1024) "ACTUAL UNDO SIZE [MByte]",
+       SUBSTR(e.value,1,25) "UNDO RETENTION [Sec]",
+       (TO_NUMBER(e.value) * TO_NUMBER(f.value) *
+       g.undo_block_per_sec) / (1024*1024)
+      "NEEDED UNDO SIZE [MByte]"
+  FROM (
+       SELECT SUM(a.bytes) undo_size
+         FROM v$datafile a,
+              v$tablespace b,
+              dba_tablespaces c
+        WHERE c.contents = 'UNDO'
+          AND c.status = 'ONLINE'
+          AND b.name = c.tablespace_name
+          AND a.ts# = b.ts#
+       ) d,
+      v$parameter e,
+      v$parameter f,
+       (
+       SELECT MAX(undoblks/((end_time-begin_time)*3600*24))
+         undo_block_per_sec
+         FROM v$undostat
+       ) g
+ WHERE e.name = 'undo_retention'
+  AND f.name = 'db_block_size';
+
+------------------------------------------------------------------------------------------
+Checking UNDO datafiles:
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+col TABLESPACE_NAME format a10
+col FILE_NAME format a35
+select dt.tablespace_name, dt.contents, ddf.file_name, ddf.autoextensible, 
+ddf.bytes/1024/1024 "MB", ddf.maxbytes/1024/1024 "MAX_MB"
+from dba_tablespaces dt, dba_data_files ddf
+where dt.contents='UNDO' and dt.tablespace_name=ddf.tablespace_name;
+
+
+
+
+&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+&                   Automatic Undo Retention Tuning                          &
+&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+
+
+Oracle 10g automatically tunes undo retention to reduce the chances of “snapshot too old” errors during long-running queries. The UNDO_RETENTION parameter is used to set a low retention time threshold which the system will attempt to achieve. In the event of any undo space constraints the system will prioritize DML operations over undo retention meaning the low threshold may not be achieved. If the undo retention threshold must be guaranteed, even at the expense of DML operations, the RETENTION GUARANTEE clause can be set against the undo tablespace during or after creation:
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+ALTER TABLESPACE <TABLESPACE_NAME> RETENTION GUARANTEE;
+
+#And you can see like that:
+
+TABLESPACE_NAME                RETENTION
+------------------------------ -----------
+SYSTEM                         NOT APPLY
+UNDOTBS1                       GUARANTEE
+SYSAUX                         NOT APPLY
+TEMP                           NOT APPLY
+USERS                          NOT APPLY
+
+&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+&  Switch back to default mode   &
+&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+
+ALTER TABLESPACE <TABLESPACE_NAME> RETENTION NOGUARANTEE;
+
+#And you can see following:
+
+TABLESPACE_NAME                RETENTION
+------------------------------ -----------
+SYSTEM                         NOT APPLY
+UNDOTBS1                       NOGUARANTEE
+SYSAUX                         NOT APPLY
+TEMP                           NOT APPLY
+USERS                          NOT APPLY
+
+
+
+=====================================================================================
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!  FOR ADVANCE ADMINISTRATOR  !!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+The Undo Advisor PL/SQL Interface
+Source : http://www.oracle.com/technology/oramag/code/tips2004/032904.html
+
+Oracle Database provides an Undo Advisor that provides advice on and helps automate the establishment 
+of your undo environment. You activate the Undo Advisor by creating an undo advisor task 
+through the advisor framework. The following example creates an undo advisor task to evaluate the 
+undo tablespace. The name of the advisor is ‘Undo Advisor‘. The analysis is based on Automatic Workload 
+Repository snapshots, which you must specify by setting parameters START_SNAPSHOT and END_SNAPSHOT. 
+In the following example, the START_SNAPSHOT is “1? and END_SNAPSHOT is “2?.
+
+DECLARE
+   tid    NUMBER;
+   tname  VARCHAR2(30);
+   oid    NUMBER;
+   BEGIN
+   DBMS_ADVISOR.CREATE_TASK('Undo Advisor', tid, tname, 'Undo Advisor Task');
+   DBMS_ADVISOR.CREATE_OBJECT(tname, 'UNDO_TBS', null, null, null, 'null', oid);
+   DBMS_ADVISOR.SET_TASK_PARAMETER(tname, 'TARGET_OBJECTS', oid);
+   DBMS_ADVISOR.SET_TASK_PARAMETER(tname, 'START_SNAPSHOT', 1);
+   DBMS_ADVISOR.SET_TASK_PARAMETER(tname, 'END_SNAPSHOT', 2);
+   DBMS_ADVISOR.execute_task(tname);
+end;

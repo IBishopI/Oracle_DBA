@@ -1,0 +1,18 @@
+###############################################################
+SSO Check:
+###############################################################
+select user_guid from apps.fnd_user where user_guid is not null;
+
+if 0 = disabled, 1 or higher =enabled.
+
+Also following system profile values should be set if SSO is enabled
+Applications SSO Type: SSWAw/SSO
+Applications SSO Auto Link User: Enable
+Applications SSO Login Types: Both
+Application SSO LDAP Synchronization: Enable
+Applications SSO Enable OID Identity Add Event: Enable
+Link Applications user with OID user with same username: Enable
+
+select profile_option_value from fnd_profile_option_values
+where PROFILE_OPTION_ID in (select PROFILE_OPTION_ID from fnd_profile_options where PROFILE_OPTION_NAME='APPS_SSO_LOCAL_LOGIN')  
+and level_id=10001;

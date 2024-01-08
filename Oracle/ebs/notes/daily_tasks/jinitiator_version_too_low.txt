@@ -1,0 +1,5 @@
+#################################################################
+Oracle jinitiator version too low
+#################################################################
+# add in java
+-Djava.vendor="Sun Microsystems Inc."

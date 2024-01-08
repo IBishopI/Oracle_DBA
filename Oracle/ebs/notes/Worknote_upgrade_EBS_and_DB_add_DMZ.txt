@@ -1,0 +1,2362 @@
+
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+List to do:
+-----------
+Install Oracle E-Buisness Suite R12
+Add DMZ-node.
+Upgrade database from 11.1.0.7 to 11.2.0.2
+Upgrade Applications from 12.1.1 to 12.1.3
+
+
+Borys Holovko
+
+
+The major action plan:
+1. Prepare to install OEBS R12.
+2. Install R12.
+3. Clone apps_tier and customize (DMZ node):
+4. Upgrade Database to 11.2.0.3
+5. Upgrade Applications to 12.1.3
+6. Refresh DMZ-node.
+
+
+
+Machine info:
+########################################################################
+Main system:
+~~~~~~~~~~~~
+Machine: Laptop - Sumsung RV509
+RAM: (8GB) but 32 bit system uses 3407 MB
+SWAP: 5500 MB
+CPU: Intel(R) Core(TM) i3 CPU       M 380  @ 2.53GHz
+DISK:
+                      106G   41G   60G  41% /
+/dev/sdb5             758G  272G  448G  38% /d01/oracle
+
+
+OS: Oracle Linux 5.7
+kernel: 2.6.18-348.6.1.0.1.el5
+
+hostname: hlvk-prd.com
+IP-address: 192.168.56.1
+db_owner:   oracle
+apps_owner: applmgr
+
+Guest system (dmz):
+~~~~~~~~~~~~~
+Machine: Oracle VM VirtualBox v.4.2.12
+Name: dmz-node
+RAM: 1090 MB
+DISK: 160GB
+OS: Oracle Linux 5.7
+kernel: 2.6.18-348.6.1.0.1.el5
+IP-address: 192.168.56.101
+hostname: hlvk-dmz.com
+dmz_owner: appldmz
+########################################################################
+
+
+
+ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+<########################################################################>
+<# 		 1. Prepare to install OEBS R12.	                #>
+<########################################################################>
+ vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+I added promt enviroment variable into the .bash_profile
+
+for oracle:
+export PS1='#$LOGNAME@`hostname -s`:$PWD[$ORACLE_SID]# '
+
+for applmgr:
+export PS1='#$LOGNAME@`hostname -s`:$PWD[$TWO_TASK]# '
+
+for appldmz:
+export PS1='#$LOGNAME@`hostname -s`:$PWD[$TWO_TASK]# '
+
+
+1.1 Install RPM - Packages on both nodes:
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+cd ~
+rpm -Uvh ./RPMS/unixODBC-2.2.11-7.1.i386.rpm
+rpm -Uvh ./RPMS/unixODBC-devel-2.2.11-7.1.i386.rpm
+rpm -Uvh ./RPMS/libXp-1.0.0-8.1.el5.i386.rpm
+rpm -Uvh ./RPMS/openmotif21-2.1.30-11.EL5.i386.rpm
+rpm -Uvh ./RPMS/xorg-x11-libs-compat-6.8.2-1.EL.33.0.1.i386.rpm
+rpm -Uvh ./RPMS/glibc-common-2.5-107.i386.rpm glibc-2.5-107.i386.rpm nscd-2.5-107.i386.rpm
+rpm -Uvh ./RPMS/glibc-headers-2.5-107.i386.rpm
+rpm -Uvh ./RPMS/glibc-devel-2.5-107.i386.rpm
+rpm -Uvh ./RPMS/libstdc++-4.1.2-54.el5.i386.rpm
+rpm -Uvh ./RPMS/libstdc++-devel-4.1.2-54.el5.i386.rpm
+rpm -Uvh ./RPMS/cpp-4.1.2-54.el5.i386.rpm
+rpm -Uvh ./RPMS/libgcc-4.1.2-54.el5.i386.rpm
+rpm -Uvh ./RPMS/gcc-4.1.2-54.el5.i386.rpm
+rpm -Uvh ./RPMS/gcc-c++-4.1.2-54.el5.i386.rpm
+rpm -Uvh ./RPMS/sysstat-7.0.2-1.el5.i386.rpm
+rpm -Uvh ./RPMS/libaio-0.3.106-3.2.i386.rpm
+rpm -Uvh ./RPMS/libaio-devel-0.3.106-3.2.i386.rpm
+rpm -Uvh ./RPMS/ksh-20060214-1.4.i386.rpm
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+BUG - RH5.0 / OEL5.0 CERT : SPECIAL LIBRARY NEEDED TO RUN OHS ON REDHAT5 MACHINE
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+There are two ways to resolve it.
+The first installing patch 6078836.
+	1.1 Download patch p6078836_101330_Linuxx86.zip from MOS
+	1.2 unzip p6078836_101330_Linuxx86.zip
+	1.3 cd 6078836 && cp libdb.so.2 /usr/lib
+
+Second way is creating link to library (I used this way)
+ln -s /usr/lib/libgdbm.so.2.0.0 /usr/lib/libdb.so.2
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+[+] compat-libstdc++-33-3.2.3-61.i386.rpm
+[+] cpp-4.1.2-54.el5.i386.rpm
+[+] gcc-4.1.2-54.el5.i386.rpm
+[+] gcc-c++-4.1.2-54.el5.i386.rpm
+[+] glibc-2.5-107.i386.rpm
+[+] glibc-2.5-107.src.rpm
+[+] glibc-common-2.5-107.i386.rpm
+[+] glibc-devel-2.5-107.i386.rpm
+[+] glibc-headers-2.5-107.i386.rpm
+[+] kernel-uek-devel-2.6.32-200.13.1.el5uek.i686.rpm
+[+] kernel-uek-headers-2.6.32-200.13.1.el5uek.i686.rpm
+[+] ksh-20060214-1.4.i386.rpm
+[+] libaio-0.3.106-3.2.i386.rpm
+[+] libaio-devel-0.3.106-3.2.i386.rpm
+[+] libgcc-4.1.2-54.el5.i386.rpm
+[+] libstdc++-4.1.2-54.el5.i386.rpm
+[+] libstdc++-devel-4.1.2-54.el5.i386.rpm
+[+] libXp-1.0.0-8.1.el5.i386.rpm
+[+] nscd-2.5-107.i386.rpm
+[+] openmotif21-2.1.30-11.EL5.i386.rpm
+[+] sysstat-7.0.2-1.el5.i386.rpm
+[+] unixODBC-2.2.11-7.1.i386.rpm
+[+] unixODBC-devel-2.2.11-7.1.i386.rpm
+[+] xorg-x11-libs-compat-6.8.2-1.EL.33.0.1.i386.rpm
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+1.2 Kernel- configuration: (/etc/sysctl.conf)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+fs.aio-max-nr = 1048576
+fs.file-max = 6815744
+net.ipv4.ip_forward = 0
+net.ipv4.conf.default.rp_filter = 2
+net.ipv4.conf.default.accept_source_route = 0
+kernel.sysrq = 0
+kernel.core_uses_pid = 1
+net.ipv4.tcp_syncookies = 1
+kernel.msgmnb = 65536
+kernel.msgmax = 65536
+kernel.shmmax = 4294967295
+kernel.shmall = 268435456
+kernel.shmmni = 4096
+kernel.sem = 253 32000 100 142
+net.ipv4.ip_local_port_range = 1024 65500
+net.core.rmem_default = 262144
+net.core.rmem_max = 4194304
+net.core.wmem_default = 262144
+net.core.wmem_max = 1048586
+net.ipv4.tcp_wmem = 262144 262144 262144
+net.ipv4.tcp_rmem = 4194304 4194304 4194304
+
+Apply new parameters: sysctl -p
+Review applied parameters: sysctl -a
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Create groups:
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+groupadd oinstall
+groupadd dba
+useradd applmgr -G dba,oracle
+usermod -G oracle,oinstall,dba oracle
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Set limits for users: (/etc/security/limits.conf)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	*       hard    nofile 65536
+	*       soft    nofile 4096
+	*       hard    nproc  16384
+	*       soft    nproc  2047
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Network: (/etc/sysconfig/network)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+NETWORKING=yes
+NETWORKING_IPV6=no
+HOSTNAME=hlvk-prd.com
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+IP-alias (/etc/hosts)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+192.168.56.1	hlvk-prd.com		hlvk-prd
+192.168.56.101	hlvk-dmz.com		hlvk-dmz
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+<########################################################################>
+<#     2. Installation Oracle E-Business Suite Release 12.1.1	        #>
+<########################################################################>
+ vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+To provide a working situation, I used VNC to install R12 from my DMZ-node in further.
+
+Connect through ssh to start vnc-server:
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#appldmz@hlvk-dmz:/home/appldmz[]# ssh oracle@hlvk-prd
+
+Create base-directory:
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#oracle@hlvk-prd:/home/oracle[]# mkdir -p /d01/oracle/rgolovko
+
+Set display:
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#oracle@hlvk-prd:/home/oracle[]# export DISPLAY=:0.0
+
+Add dmz node to control list Xserver:
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#oracle@hlvk-prd:/home/oracle[]# xhost +hlvk-dmz.com
+hlvk-dmz.com being added to access control list
+
+#oracle@hlvk-prd:/home/oracle[]# vncpasswd
+Enter th e password for vnc connection.
+
+#oracle@hlvk-prd:/home/oracle[]# vncserver -depth 16 -geometry 800x600
+
+New 'hlvk-prd:1 (oracle)' desktop is hlvk-prd:1
+
+Connect through VNC-Viewer:
+host: hlvk-prd:1
+user: oracle
+password: ******
+
+#oracle@hlvk-prd:/home/oracle[]# cd /d01/oracle/Stage/startCD/Disk1/rapidwiz
+
+#oracle@hlvk-prd:/d01/oracle/Stage/startCD/Disk1/rapidwiz[]#./rapidwiz
+
+Wizard will now launch the Java Interface.....
+
+Configuration file written to: /d01/oracle/rgolovko/inst/apps/RGOLOVKO_hlvk-prd/conf_RGOLOVKO.txt
+Configuration file written to: /d01/oracle/rgolovko/db/tech_st/11.1.0/appsutil/conf_RGOLOVKO.txt
+
+Database logfile - /d01/oracle/rgolovko/db/tech_st/11.1.0/appsutil/log/RGOLOVKO_hlvk-prd/07161544.log
+Appltop logfile - /d01/oracle/rgolovko/inst/apps/RGOLOVKO_hlvk-prd/logs/07161544.log
+
+
+Now I can set needed parameters:
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+First window:  Introduction to install
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Click button "Next"
+
+You can see that on the provided screenshot: Screenshot.png
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Second window: Select wizard operation
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+I marked "Install Oracle Application Release 12.1.1"
+Also mark "Use Express install" should be unselected because in further I wouldn't change parameters of instalation. 
+
+Then click "Next"
+
+Screenshot-1.png
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Third window: Provide your email address...
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+I skipped this frame so as I don't have account on MOS.
+
+click "Next"
+
+Screenshot-2.png
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Fourth window: Configuration choice
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+This window skipped too. Because I don't have parameter file but I am working above bash-script like fusion_dba.sh and I want to implement function rapid install in my script "easy_dba.sh".
+
+click "Next"
+
+Screenshot-3.png
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Fifth window: Global system settings
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Leaving the default values for ports.
+
+Click "Next"
+
+Screenshot-4.png
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Sixth frame: Database node configuration
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+I had set following values:
+~~~~~
+Database type: Fresh Database
+
+Database SID: RGOLOVKO
+
+Host name: hlvk-prd
+
+Domain name: com
+
+Operating system: Linux (32 bit)
+
+Database OS user: oracle
+
+Database OS group: dba
+
+Base directory: /d01/oracle/rgolovko
+~~~~~
+
+Click "Next"
+
+Screenshot-5.png
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Seventh window: Select Licensing Type
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+I selected "Suite Licensing"
+
+Click "Next"
+
+Screenshot-6.png
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Eighth step: Licence Additional Products
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+I skiped this step.
+
+click "Next"
+
+Screenshot-7.png
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Ninth: Select Country-specific functionalities
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+I skiped this step too.
+
+click "Next"
+
+Screenshot-8.png
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Tenth: Select Internationalization Settings 
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+As well skipped.
+
+click "Next"
+
+Screenshot-9.png
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+11th window: Primary Applications node configuration
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+I set following values:
+~~~~~~~~~~
+Host name:	hlvk-prd
+
+Domain name:	com
+
+Operating system: Linux (32 bit)
+
+Apps OS user:	applmgr
+
+Apps OS group: dba
+
+Base directory: /d01/oracle/rgolovko
+
+Instance directory: /d01/oracle/rgolovko/inst
+~~~~~~~~~~
+
+Then click "Next"
+
+Screenshot-10.png
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+12th window: Node information
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+I going to create dmz-node by cloning application tier that's why I am leaving default settings.
+
+Click "Next"
+
+Screenshot-11.png
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+13th: Validate System configuration
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+After testing system we should check that all parameters in good state (green mark).
+
+Click "Next"
+
+Screenshot-12.png
+
+Then click again "Next"
+
+Screenshot-13.png
+
+After about two hours installation was completed...
+
+Screenshot-14,15
+
+Check that all components were installed successfully.
+
+Screenshot-16.png
+
+Click "Next" and then "Finish"
+
+Trying to enter in OAM http://hlvk-prd.com:8000.
+Screenshot-18,19,20.
+
+Check logs for errors:
+egrep -i 'ac-|ap-|ad-|error|fail|warn' /d01/oracle/rgolovko/db/tech_st/11.1.0/appsutil/log/RGOLOVKO_hlvk-prd/07161544.log
+ERRORCODE = 0 END_ERRORCODE\n
+egrep -i 'ac-|ap-|ad-|error|fail|warn' /d01/oracle/rgolovko/inst/apps/RGOLOVKO_hlvk-prd/logs/07161544.log
+No errors.
+
+The installation was successful move to the next step.
+
+vncserver -kill hlvk-prd:1
+Killing Xvnc process ID 7599
+
+
+ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+<########################################################################>
+<# 	 3. Cloning apps tier and customizing (DMZ node)	        #>
+<########################################################################>
+ vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+I used documentation: 
+Oracle E-Business Suite R12 Configuration in a DMZ [ID 380490.1]
+
+Using Load-Balancers with Oracle E-Business Suite Release 12 (Doc ID 380489.1)
+
+~~~ ~~~ ~~~ 
+No additional patches are currently required to support DMZs for E-Business Suite Release 12.
+~~~ ~~~ ~~~ 
+
+==========================================================================
+3.1 Prepare APPS tier for cloning.
+==========================================================================
+
+Enter as applmgr:
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+Set environment variables:
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+#applmgr@hlvk-prd:/home/applmgr/[]# source APPSRGOLOVKO_hlvk-prd.env
+
+#applmgr@hlvk-prd:/home/applmgr/[]# cd $ADMIN_SCRIPTS_HOME (for 11i cd $COMMON_TOP/admin/scripts/)
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Run adpreclone.pl with parameter "appsTier":
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#applmgr@hlvk-prd:/d01/oracle/rgolovko/inst/apps/RGOLOVKO_hlvk-prd/admin/scripts[RGOLOVKO]# ./adpreclone.pl appsTier
+/d01/oracle/rgolovko/inst/apps/RGOLOVKO_hlvk-prd/admin/log/StageAppsTier_07201540.log
+
+
+                     Copyright (c) 2002 Oracle Corporation
+                        Redwood Shores, California, USA
+
+                        Oracle Applications Rapid Clone
+
+                                 Version 12.0.0
+
+                      adpreclone Version 120.20.12010000.2
+
+Running:
+perl /d01/oracle/rgolovko/apps/apps_st/appl/ad/12.0.0/bin/adclone.pl java=/d01/oracle/rgolovko/apps/tech_st/10.1.3/appsutil/jdk mode=stage stage=/d01/oracle/rgolovko/apps/apps_st/comn/clone component=appsTier method= appctx=/d01/oracle/rgolovko/inst/apps/RGOLOVKO_hlvk-prd/appl/admin/RGOLOVKO_hlvk-prd.xml showProgress 
+APPS Password : 
+method defaulted to CUSTOM
+
+
+Beginning application tier Stage - Sat Jul 20 15:40:53 2013
+
+/d01/oracle/rgolovko/apps/tech_st/10.1.3/appsutil/jdk/bin/java -Xmx600M -DCONTEXT_VALIDATED=false  -Doracle.installer.oui_loc=/oui -classpath /d01/oracle/rgolovko/apps/tech_st/10.1.3/lib/xmlparserv2.jar:/d01/oracle/rgolovko/apps/tech_st/10.1.3/jdbc/lib/ojdbc14.jar:/d01/oracle/rgolovko/apps/apps_st/comn/java/classes:/d01/oracle/rgolovko/apps/tech_st/10.1.3/oui/jlib/OraInstaller.jar:/d01/oracle/rgolovko/apps/tech_st/10.1.3/oui/jlib/ewt3.jar:/d01/oracle/rgolovko/apps/tech_st/10.1.3/oui/jlib/share.jar:/d01/oracle/rgolovko/apps/tech_st/10.1.3/oui/jlib/srvm.jar:/d01/oracle/rgolovko/apps/tech_st/10.1.3/jlib/ojmisc.jar  oracle.apps.ad.clone.StageAppsTier -e /d01/oracle/rgolovko/inst/apps/RGOLOVKO_hlvk-prd/appl/admin/RGOLOVKO_hlvk-prd.xml -stage /d01/oracle/rgolovko/apps/apps_st/comn/clone -tmp /tmp -method CUSTOM   -showProgress
+
+Log file located at /d01/oracle/rgolovko/inst/apps/RGOLOVKO_hlvk-prd/admin/log/StageAppsTier_07201540.log
+
+  -     80% completed       
+
+Completed Stage...
+
+==========================================================================
+3.2 Copy apps tier from hlvk-prd.com to hlvk-dmz.
+==========================================================================
+
+#applmgr@hlvk-prd:/d01/oracle/rgolovko[RGOLOVKO]# rsync -rl ./apps appldmz@hlvk-dmz:/ora/
+
+or 
+
+#applmgr@hlvk-prd:/d01/oracle/rgolovko[RGOLOVKO]# tar -czf - ./apps | ssh appldmz@hlvk-dmz "cd /ora/; tar -xzf - "
+
+NOT to use the SCP because it copies the files that are referenced symbolic links rather than the link itself.
+
+
+==========================================================================
+Fixes before configuring cloned system.
+==========================================================================
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Upload context file for dmz-node.
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+[applmgr@hlvk-prd scripts]$ scp $CONTEXT_FILE appldmz@hlvk-dmz:/ora/
+appldmz@hlvk-dmz's password: 
+RGOLOVKO_hlvk-prd.xml                         100%   90KB  89.6KB/s   00:00
+
+[applmgr@hlvk-prd scripts]$ ssh appldmz@hlvk-dmz
+appldmz@hlvk-dmz's password: 
+Last login: Sat Jul 20 15:57:14 2013 from hlvk-prd.com
+
+#appldmz@hlvk-dmz:/home/appldmz[]# mv /ora/RGOLOVKO_hlvk-prd.xml /ora/RGOLOVKO_hlvk-dmz.xml
+#appldmz@hlvk-dmz:/home/appldmz[]# sed -i 's/\/d01\/oracle\/rgolovko/\/ora/g' /ora/RGOLOVKO_hlvk-dmz.xml 
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Fixing symbolyc links in my case I wrote following:
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#appldmz@hlvk-dmz:/ora/apps/apps_st/appl/ad/12.0.0/bin[]# find -L  /ora/apps/ -type l | while read broken_link; do new_loc=$(ll $broken_link |awk '{print $11}'|sed 's/\/d01\/oracle\/rgolovko/\/ora/g'); rm $broken_link; ln -s $new_loc $broken_link; done
+
+==========================================================================
+3.3 Adding dmz node.
+==========================================================================
+
+appldmz@hlvk-dmz:/ora[]# cd /ora/apps/apps_st/comn/clone/bin
+
+appldmz@hlvk-dmz:/ora/apps/apps_st/comn/clone/bin[]# ./adclonectx.pl addnode contextfile=/ora/RGOLOVKO_hlvk-dmz.xml
+
+                     Copyright (c) 2002 Oracle Corporation
+                        Redwood Shores, California, USA
+
+                        Oracle Applications Rapid Clone
+
+                                 Version 12.0.0
+
+                      adclonectx Version 120.23.12010000.1
+
+Running: 
+/ora/apps/apps_st/comn/clone/bin/../jre/bin/java -Xmx600M -classpath /ora/apps/apps_st/comn/clone/bin/../jlib/ojdbc14.jar:/ora/apps/apps_st/comn/clone/bin/../jlib/xmlparserv2.jar:/ora/apps/apps_st/comn/clone/bin/../jlib/java oracle.apps.ad.context.CloneContext  -e /ora/RGOLOVKO_hlvk-dmz.xml -addnode
+Enter the APPS password : apps
+
+Log file located at /ora/apps/apps_st/comn/clone/bin/CloneContext_0720223630.log
+
+Provide the values required for creation of the new APPL_TOP Context file.
+
+Target System Hostname (virtual or normal) [hlvk-dmz] : 
+
+It is recommended that your inputs are validated by the program.
+However you might choose not to validate them under following circumstances:
+
+        -If cloning a context on source system for a remote system.
+        -If cloning a context on a machine where the ports are taken and
+         you do not want to shutdown the services at this point.
+        -If cloning a context but the database it needs to connect is not available.
+
+Do you want the inputs to be validated (y/n) [n] ? : n
+
+Target System Root Service [enabled] : disabled
+
+Target System Web Entry Point Services [enabled] : 
+
+Target System Web Application Services [enabled] : 
+
+Target System Batch Processing Services [enabled] : disabled
+
+Target System Other Services [disabled] : 
+
+Do you want to preserve the Display [hlvk-prd:0.0] (y/n) ? : n
+
+Target System Display [hlvk-dmz:0.0] : 
+Database port is 1521
+
+Do you want the the target system to have the same port values as the source system (y/n) [y] ? : y
+Complete port information available at /ora/apps/apps_st/comn/clone/bin/out/RGOLOVKO_hlvk-dmz/portpool.lst
+
+UTL_FILE_DIR on database tier consists of the following directories.
+
+1. /usr/tmp
+2. /usr/tmp
+3. /d01/oracle/rgolovko/db/tech_st/11.1.0/appsutil/outbound/RGOLOVKO_hlvk-prd
+4. /usr/tmp
+Choose a value which will be set as APPLPTMP value on the target node [1] : 
+
+New context path and file name [/d01/oracle/rgolovko/inst/apps/RGOLOVKO_hlvk-dmz/appl/admin/RGOLOVKO_hlvk-dmz.xml] : /ora/inst/apps/RGOLOVKO_hlvk-dmz/RGOLOVKO_hlvk-dmz.xml
+
+Creating the new APPL_TOP Context file from :
+  /ora/apps/apps_st/comn/clone/context/apps/adxmlctx.tmp
+
+The new APPL_TOP context file has been created :
+  /ora/inst/apps/RGOLOVKO_hlvk-dmz/RGOLOVKO_hlvk-dmz.xml
+
+Log file located at /ora/apps/apps_st/comn/clone/bin/CloneContext_0720223630.log
+contextfile=/ora/inst/apps/RGOLOVKO_hlvk-dmz/RGOLOVKO_hlvk-dmz.xml
+Check Clone Context logfile /ora/apps/apps_st/comn/clone/bin/CloneContext_0720223630.log for details.
+
+#appldmz@hlvk-dmz:/ora/apps/apps_st/comn/clone/bin[]# egrep -i 'ac-|ap-|ad-|error|fail|warn' /ora/apps/apps_st/comn/clone/bin/CloneContext_0720223630.log
+No errors.
+
+Create link to eniroment file:
+#appldmz@hlvk-dmz:/home/appldmz[]# ln -s /ora/apps/apps_st/appl/APPSRGOLOVKO_hlvk-dmz.env ~
+
+==========================================================================
+Faced problem: at the same time only one login-page is available where autoconfig was run last.
+I do not use loadbalancer and I want to access on URLs both nodes.
+==========================================================================
+
+Solution:
+I should change profile hierachy to SERVRESP.
+~~~~~~~~~~
+[applmgr@hlvk-prd scripts]$ echo $FND_TOP/patch/115/sql/txkChangeProfH.sql
+
+~~~
+Run script: /d01/oracle/rgolovko/apps/apps_st/appl/fnd/12.0.0/patch/115/sql/txkChangeProfH.sql with parameter "SERVRESP"
+~~~
+
+[applmgr@hlvk-prd scripts]$ sqlplus apps/apps @/d01/oracle/rgolovko/apps/apps_st/appl/fnd/12.0.0/patch/115/sql/txkChangeProfH.sql SERVRESP
+
+SQL*Plus: Release 11.1.0.7.0 - Production on Sun Jul 21 01:08:04 2013
+
+Copyright (c) 1982, 2008, Oracle.  All rights reserved.
+
+
+Connected to:
+Oracle Database 11g Enterprise Edition Release 11.1.0.7.0 - Production
+With the Partitioning, OLAP, Data Mining and Real Application Testing options
+
+Changing the hierarchy type for the  Profile APPS_WEB_AGENT
+Profile APPS_WEB_AGENT hierarchy type has been
+successfully changed to SERVRESP
+Changing the hierarchy type for the  Profile APPS_SERVLET_AGENT
+Profile APPS_SERVLET_AGENT hierarchy type has been
+successfully changed to SERVRESP
+Changing the hierarchy type for the  Profile APPS_JSP_AGENT
+Profile APPS_JSP_AGENT hierarchy type has been
+successfully changed to SERVRESP
+Changing the hierarchy type for the  Profile APPS_FRAMEWORK_AGENT
+Profile APPS_FRAMEWORK_AGENT hierarchy type has been
+successfully changed to SERVRESP
+Changing the hierarchy type for the  Profile ICX_FORMS_LAUNCHER
+Profile ICX_FORMS_LAUNCHER hierarchy type has been
+successfully changed to SERVRESP
+Changing the hierarchy type for the  Profile ICX_DISCOVERER_LAUNCHER
+Profile ICX_DISCOVERER_LAUNCHER hierarchy type has been
+successfully changed to SERVRESP
+Changing the hierarchy type for the  Profile ICX_DISCOVERER_VIEWER_LAUNCHER
+Profile ICX_DISCOVERER_VIEWER_LAUNCHER hierarchy type has been
+successfully changed to SERVRESP
+Changing the hierarchy type for the  Profile HELP_WEB_AGENT
+Profile HELP_WEB_AGENT hierarchy type has been
+successfully changed to SERVRESP
+Changing the hierarchy type for the  Profile APPS_PORTAL
+Profile APPS_PORTAL hierarchy type has been
+successfully changed to SERVRESP
+Changing the hierarchy type for the  Profile CZ_UIMGR_URL
+Profile CZ_UIMGR_URL hierarchy type has been
+successfully changed to SERVRESP
+Changing the hierarchy type for the  Profile QP_PRICING_ENGINE_URL
+Profile QP_PRICING_ENGINE_URL hierarchy type has been
+successfully changed to SERVRESP
+Changing the hierarchy type for the  Profile TCF:HOST
+Profile TCF:HOST hierarchy type has been
+successfully changed to SERVRESP
+Disconnected from Oracle Database 11g Enterprise Edition Release 11.1.0.7.0 - Production
+With the Partitioning, OLAP, Data Mining and Real Application Testing options
+
+
+
+SQL> set linesize 999;
+SQL> set pagesize 999;
+SQL> select PROFILE_OPTION_NAME,HIERARCHY_TYPE from fnd_profile_options where profile_option_name in
+ ('APPS_WEB_AGENT','APPS_SERVLET_AGENT','APPS_JSP_AGENT','APPS_FRAMEWORK_AGENT',
+ 'ICX_FORMS_LAUNCHER','ICX_DISCOVERER_LAUNCHER','ICX_DISCOVERER_VIEWER_LAUNCHER',
+ 'HELP_WEB_AGENT','APPS_PORTAL','CZ_UIMGR_URL','QP_PRICING_ENGINE_URL','TCF:HOST');  2    3    4  
+
+PROFILE_OPTION_NAME                                                              HIERARCH
+-------------------------------------------------------------------------------- --------
+APPS_FRAMEWORK_AGENT                                                             SERVRESP
+APPS_JSP_AGENT                                                                   SERVRESP
+APPS_PORTAL                                                                      SERVRESP
+APPS_SERVLET_AGENT                                                               SERVRESP
+APPS_WEB_AGENT                                                                   SERVRESP
+CZ_UIMGR_URL                                                                     SERVRESP
+HELP_WEB_AGENT                                                                   SERVRESP
+ICX_DISCOVERER_LAUNCHER                                                          SERVRESP
+ICX_DISCOVERER_VIEWER_LAUNCHER                                                   SERVRESP
+ICX_FORMS_LAUNCHER                                                               SERVRESP
+QP_PRICING_ENGINE_URL                                                            SERVRESP
+TCF:HOST                                                                         SERVRESP
+
+12 rows selected.
+
+SQL> select node_name,node_id,server_id from fnd_nodes;
+
+NODE_NAME               NODE_ID SERVER_ID
+-------------------- ---------- ----------------------------------------------------------------
+hlvk-PRD                   6123 E3220C6CE0EAA18CE040A8C00138095D28839603012886011864145370676912
+AUTHENTICATION             6124 SECURE
+hlvk-DMZ                   6125 E324C650DAEC009DE040A8C001383AD630475163443387709509199820712240
+
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Stop services on both nodes: 
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+[applmgr@hlvk-prd scripts]$ ./adstpall.sh apps/apps
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Run autoconfig on both nodes:
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+[applmgr@hlvk-prd scripts]$  ./adautocfg.sh appspass=apps
+AutoConfig completed successfully.
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Run services:
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+[applmgr@hlvk-prd scripts]$  ./adstrtal.sh apps/apps
+
+
+==========================================================================
+3.4 Changing "node trust level" to external.
+==========================================================================
+Login to OAM as sysadmin: http://hlvk-prd.com:8000
+
+Navigate: System Administartor (Responsibility) -> Profile -> System
+
+Click "System Profile values"
+then:
+Profile: Node Trust Level
+Server(B): hlvk-DMZ
+Click "Find"
+Then setup: 
+Site: Normal
+Server: External
+
+
+
+ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+<########################################################################>
+<#     4. Upgrade Database server from 11.1.0.1 to 11.2.0.3             #>
+<########################################################################>
+ vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+
+Action plan for this sub-task:
+1. Prepare existing database instalation for upgrade according to "Interoperability Note ID 1367644.1"
+2. Upgrade database to new version. I have choosen method "Manually Upgrade" according to "Oracle Database Upgrade Guide 11g Release 2 (11.2)"
+3. Post-upgrade steps.
+
+
+
+I Used documentation listed below:
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    Interoperability Notes Oracle EBS R12 with Oracle Database 11gR2 (11.2.0.2) (Doc ID 1367644.1)
+    Oracle Database Upgrade Guide 11g Release 2 (11.2)
+    Complete Checklist for Manual Upgrades to 11gR2 [ID 837570.1]
+    Database Initialization Parameters for Oracle E-Business Suite Release 12 [ID 396009.1]
+    Script to Collect DB Upgrade/Migrate Diagnostic Information (dbupgdiag.sql) [ID 556610.1]
+
+Also in the note provided other metalink's notes according to appearance questions.
+
+====================================================================
+			PRE-UPGRADE STEPS:
+====================================================================
+
+Installing new oracle home which will provide to us analyze scripts.
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Download patch: 10098816 (Size 4.9 GB) 11.2.0.2.0 PATCH SET FOR ORACLE DATABASE SERVER (Platform Linux x86)
+
+Uncompress patch:
+~~~~~~~~~~~~~~~~~
+
+[oracle@hlvk-prd ~]$ cd /home/oracle/Upgrade/10098816_db.11.2.0.2 && unzip -b "./\*.zip"
+7 archives were successfully processed.
+
+[oracle@hlvk-prd /home/oracle/Upgrade/10098816_db.11.2.0.2]$ mkdir -p /d01/oracle/rgolovko/db/tech_st/11.2.0/orainventory
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Create response file from default response file /home/oracle/Upgrade/10098816_db.11.2.0.2/database/response/db_install.rsp
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+[oracle@hlvk-prd /home/oracle/Upgrade/10098816_db.11.2.0.2]$ cp /home/oracle/Upgrade/10098816_db.11.2.0.2/database/response/db_install.rsp ./
+[oracle@hlvk-prd /home/oracle/Upgrade/10098816_db.11.2.0.2]$ mv db_install.rsp RGOLOVKO.rsp
+[oracle@hlvk-prd /home/oracle/Upgrade/10098816_db.11.2.0.2]$ vi RGOLOVKO.rsp
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+oracle.install.responseFileVersion=/oracle/install/rspfmt_dbinstall_response_schema_v11_2_0
+oracle.install.option=INSTALL_DB_SWONLY
+ORACLE_HOSTNAME=hlvk-prd
+UNIX_GROUP_NAME=dba
+INVENTORY_LOCATION=/d01/oracle/rgolovko/db/tech_st/11.2.0/orainventory
+SELECTED_LANGUAGES=en
+ORACLE_HOME=/d01/oracle/rgolovko/db/tech_st/11.2.0/
+ORACLE_BASE=/d01/oracle/rgolovko/
+oracle.install.db.InstallEdition=EE
+oracle.install.db.EEOptionsSelection=true
+oracle.install.db.DBA_GROUP=dba
+oracle.install.db.OPER_GROUP=dba
+oracle.install.db.config.starterdb.type=DATA_WAREHOUSE
+SECURITY_UPDATES_VIA_MYORACLESUPPORT=false
+DECLINE_SECURITY_UPDATES=true
+oracle.installer.autoupdates.option=SKIP_UPDATES
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Installing software in silent mode:
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+[oracle@hlvk-prd ~]$ cd /home/oracle/Upgrade/10098816_db.11.2.0.2/database/
+
+[oracle@hlvk-prd /home/oracle/Upgrade/10098816_db.11.2.0.2/database]$ ./runInstaller -debug -silent -force -responseFile /home/oracle/Upgrade/10098816_db.11.2.0.2/RGOLOVKO.rsp
+
+
+	 
+Successfully Setup Software.
+copying /d01/oracle/rgolovko/db/tech_st/11.2.0/orainventory/logs/installActions2013-07-29_01-04-09AM.log to /d01/oracle/rgolovko/db/tech_st/11.2.0/cfgtoollogs/oui/installActions2013-07-29_01-04-09AM.log
+copying /d01/oracle/rgolovko/db/tech_st/11.2.0/orainventory/logs/oraInstall2013-07-29_01-04-09AM.out to /d01/oracle/rgolovko/db/tech_st/11.2.0/cfgtoollogs/oui/oraInstall2013-07-29_01-04-09AM.out
+copying /d01/oracle/rgolovko/db/tech_st/11.2.0/orainventory/logs/oraInstall2013-07-29_01-04-09AM.err to /d01/oracle/rgolovko/db/tech_st/11.2.0/cfgtoollogs/oui/oraInstall2013-07-29_01-04-09AM.err
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Checking logs:
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+[oracle@hlvk-prd database]$ egrep -i 'error|fail|warn' /d01/oracle/rgolovko/db/tech_st/11.2.0/orainventory/logs/installActions2013-07-29_01-04-09AM.log
+
+Only informative message like tese:
+INFO: 7/29/13 1:10:07 AM MSD: extracting file 'warnl.gif' from '/d01/oracle/rgolovko/db/tech_st/11.2.0/uix/cabo/images/warnl.gif'
+INFO: 7/29/13 1:10:07 AM MSD: extracting file 'warnl.gif' from '/d01/oracle/rgolovko/db/tech_st/11.2.0/uix/cabo/images/warnl.gif'
+FINEST: 7/29/13 1:10:08 AM MSD: Expression:   string s_errMsg = "Error setting variable";
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+[oracle@hlvk-prd database]$ egrep -i 'error|fail|warn' /d01/oracle/rgolovko/db/tech_st/11.2.0/cfgtoollogs/oui/oraInstall2013-07-29_01-04-09AM.out
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Only one non-critical error.
+Minimal value ip_local_port_range's parameter required for Oracle Applications is 1024 but for Database it is 9000.
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+[performChecks.flowWorker] [ 2013-07-29 01:04:37.570 MSD ] [TaskKernelParam.performVerification:375]  Result.VERIFICATION_FAILED:: available value for kernel parameter 'ip_local_port_range' =between 1024 & 65500
+TaskKernelParam:OS Kernel Parameter: ip_local_port_range:TASK_SUMMARY:FAILED:IGNORABLE:VERIFICATION_FAILED
+          ERRORMSG(hlvk-prd): PRVF-7543 : OS Kernel parameter "ip_local_port_range" does not have proper value on node "hlvk-prd" [Expected = "between 9000 & 65500" ; Found = "between 1024 & 65500"].
+        Overall Status->VERIFICATION_FAILED
+        hlvk-prd-->VERIFICATION_FAILED
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+vi /d01/oracle/rgolovko/db/tech_st/11.2.0/cfgtoollogs/oui/oraInstall2013-07-29_01-04-09AM.err
+
+File is empty. 
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+[root@hlvk-prd ~]# /d01/oracle/rgolovko/db/tech_st/11.2.0/root.sh
+Check /d01/oracle/rgolovko/db/tech_st/11.2.0/install/root_hlvk-prd_2013-07-29_01-11-15.log for the output of root script
+
+The following environment variables are set as:
+    ORACLE_OWNER= oracle
+    ORACLE_HOME=  /d01/oracle/rgolovko/db/tech_st/11.2.0
+Entries will be added to the /etc/oratab file as needed by
+Database Configuration Assistant when a database is created
+Finished running generic part of root script.
+Now product-specific root actions will be performed.
+Finished product-specific root actions.
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Preparing to upgrade:
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+select UPPER(b.NODE_NAME) as "Node Name",UPPER(a.name) as "APPL_TOP Name" from
+APPLSYS.FND_APPL_TOPS a,apps.fnd_nodes b where a.NODE_ID=b.NODE_ID;
+
+Node Name                      APPL_TOP Name
+------------------------------ ------------------------------
+hlvk-PRD                       AT_hlvkPRD
+hlvk-DMZ                       AT_hlvkDMZ
+
+$AD_TOP/patch/115/sql/adsetmmd.sql
+sqlplus apps/apps
+SQL>  @/d01/oracle/rgolovko/apps/apps_st/appl/ad/12.0.0/patch/115/sql/adsetmmd.sql ENABLE
+
+select BUG_NUMBER,APPLICATION_SHORT_NAME,LANGUAGE from ad_bugs where BUG_NUMBER in ('7303030','9062910','8919489','9868229','10163753','11071569');
+
+[+] 7303030  - Oracle E-Business Suite 12.1.1
+[-] 9062910  - 11g Release 2 interoperability patch for Release 12.1 (9062910)
+	$BOM_TOP/patch/115/odf  cstfifo.odf  120.1.12010000.2
+[-] 8919489  - 12.1 TXK Delta 3 patch
+[-] 9868229  - 12.0.-12.1 CST_LAYER_ACTUAL_COST_DTLS_V BECOMES INVALID AFTER 11.2.0.2 UPGRADE 
+[-] 10163753 - APPSST11202: BIV_B_AGE_H_SUM_MV FAILS DURING INDEX CREATION
+[-] 11071569 - 
+
+
+[applmgr@hlvk-prd 9868229]$ adpatch apply=yes
+The default directory is [/patches/9868229] : 
+Please enter the name of your AutoPatch driver file : u9868229.drv
+
+[applmgr@hlvk-prd 9868229]$ egrep -i 'ap-|ac-|error|warn|fail' /d01/oracle/rgolovko/apps/apps_st/appl/admin/RGOLOVKO/log/adpatch_9062910.log
+
+   0 files had fatal errors.
+
+
+[applmgr@hlvk-prd 9868229]$ strings -a /d01/oracle/rgolovko/apps/apps_st/appl/bom/12.0.0/patch/115/odf/cstfifo.odf  | grep '$Header'
+# $Header: cstfifo.odf 120.1.12010000.2 2010/07/28 09:19:28 lchevala ship $
+
+
+[applmgr@hlvk-prd 10163753]$ adpatch apply=yes preinstall=y
+The default directory is [/patches/10163753] : 
+Please enter the name of your AutoPatch driver file : u10163753.drv
+[applmgr@hlvk-prd 10163753]$ egrep -i 'ap-|ac-|error|warn|fail' /d01/oracle/rgolovko/apps/apps_st/appl/admin/RGOLOVKO/log/adpatch-10163753.log
+
+   0 files had fatal errors.
+
+[applmgr@hlvk-prd 9062910]$ adpatch apply=yes
+The default directory is [/patches/9062910] : 
+Please enter the name of your AutoPatch driver file : u9062910.drv
+[applmgr@hlvk-prd 9062910]$ egrep -i 'ap-|ac-|error|warn|fail' /d01/oracle/rgolovko/apps/apps_st/appl/admin/RGOLOVKO/log/adpatch_9062910.log
+
+   0 files had fatal errors.
+
+[applmgr@hlvk-prd 8919489]$ adpatch apply=yes
+The default directory is [/patches/8919489] : 
+Please enter the name of your AutoPatch driver file : u8919489.drv
+[applmgr@hlvk-prd 9062910]$ egrep -i 'ap-|ac-|error|warn|fail' /d01/oracle/rgolovko/apps/apps_st/appl/admin/RGOLOVKO/log/adpatch_8919489.log
+You can be notified by email if a failure occurs.
+
+   0 files had fatal errors.
+
+Per metalink it can be safely ignored:
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+WARNING: Unable to load metadata entry from zip file /d01/oracle/rgolovko/apps/tech_st/10.1.3/lib/xsu12.jar
+Cause: Error while trying to read metadata from file /d01/oracle/rgolovko/apps/tech_st/10.1.3/lib/xsu12.jar: No metadata entry META-INF/JRIMETA.DAT found
+WARNING: Unable to load metadata entry from zip file /d01/oracle/rgolovko/apps/tech_st/10.1.3/j2ee/home/lib/http_client.jar
+
+applmgr@hlvk-prd 9583541]$ adpatch apply=yes
+The default directory is [/patches/9583541] : 
+Please enter the name of your AutoPatch driver file : u9583541.drv
+[applmgr@hlvk-prd 9583541]$ egrep -i 'ap-|ac-|error|warn|fail' /d01/oracle/rgolovko/apps/apps_st/appl/admin/RGOLOVKO/log/adpatch_9583541.log
+
+   0 files had fatal errors.
+
+
+Create appsutil.zip for DBtier
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+[applmgr@hlvk-prd 9062910]$ $AD_TOP/bin/admkappsutil.pl
+MakeAppsUtil completed successfully.
+
+[oracle@hlvk-prd 11.1.0]$ cp /d01/oracle/rgolovko/inst/apps/RGOLOVKO_hlvk-prd/admin/out/appsutil.zip ./
+
+[oracle@hlvk-prd 11.1.0]$ unzip -o appsutil.zip
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+The same patches installing to dmz-node because it has separete appl_top: 
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+SQL> select fnd_profile.value('APPS_MAINTENANCE_MODE') as status from dual;
+
+STATUS
+--------------------------------------------------------------------------------
+MAINT
+
+[+] 9062910  - 11g Release 2 interoperability patch for Release 12.1 (9062910)
+[+] 8919489  - 12.1 TXK Delta 3 patch
+[+] 9868229  - 12.0.-12.1 CST_LAYER_ACTUAL_COST_DTLS_V BECOMES INVALID AFTER 11.2.0.2 UPGRADE 
+[+] 10163753 - APPSST11202: BIV_B_AGE_H_SUM_MV FAILS DURING INDEX CREATION
+[+] 11071569 - 
+
+
+DONE.
+
+Disable maitanence mode:
+~~~~~~~~~~~~~~~~~~~~~~~~
+sqlplus apps/apps
+@/d01/oracle/rgolovko/apps/apps_st/appl/ad/12.0.0/patch/115/sql/adsetmmd.sql DISABLE
+PL/SQL procedure successfully completed.
+
+
+Analytic script:
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+[oracle@hlvk-prd ~]$ cp /d01/oracle/rgolovko/db/tech_st/11.2.0/rdbms/admin/utlu112i.sql $ORACLE_HOME/rdbms/admin/
+
+
+[oracle@hlvk-prd ~]$ sqlplus / as sysdba
+
+SQL*Plus: Release 11.1.0.7.0 - Production on Wed Aug 7 16:21:39 2013
+
+Copyright (c) 1982, 2008, Oracle.  All rights reserved.
+
+
+Connected to:
+Oracle Database 11g Enterprise Edition Release 11.1.0.7.0 - Production
+With the Partitioning, OLAP, Data Mining and Real Application Testing options
+
+SQL> @?/rdbms/admin/utlu112i.sql
+
+===============================================================================================================================
+Oracle Database 11.2 Pre-Upgrade Information Tool 08-07-2013 16:23:21
+Script Version: 11.2.0.2.0 Build: 001
+.
+**********************************************************************
+Database:
+**********************************************************************
+--> name:          RGOLOVKO
+--> version:       11.1.0.7.0
+--> compatible:    11.1.0
+--> blocksize:     8192
+--> platform:      Linux IA (32-bit)
+--> timezone file: V10
+.
+
+**********************************************************************
+Tablespaces: [make adjustments in the current environment]
+**********************************************************************
+--> SYSTEM tablespace is adequate for the upgrade.
+.... minimum required size: 11058 MB
+--> CTXD tablespace is adequate for the upgrade.
+.... minimum required size: 19 MB
+--> ODM tablespace is adequate for the upgrade.
+.... minimum required size: 10 MB
+--> APPS_UNDOTS1 tablespace is adequate for the upgrade.
+.... minimum required size: 1198 MB
+--> APPS_TS_TX_DATA tablespace is adequate for the upgrade.
+.... minimum required size: 5220 MB
+--> APPS_TS_QUEUES tablespace is adequate for the upgrade.
+.... minimum required size: 100 MB
+--> OLAP tablespace is adequate for the upgrade.
+.... minimum required size: 16 MB
+WARNING: --> SYSAUX tablespace is not large enough for the upgrade.
+.... currently allocated size: 472 MB
+.... minimum required size: 510 MB
+.... increase current size by: 38 MB
+.... tablespace is NOT AUTOEXTEND ENABLED.
+.
+**********************************************************************
+Flashback: OFF
+**********************************************************************
+**********************************************************************
+Update Parameters: [Update Oracle Database 11.2 init.ora or spfile]
+Note: Pre-upgrade tool was run on a lower version 32-bit database.
+**********************************************************************
+--> If Target Oracle is 32-Bit, refer here for Update Parameters:
+-- No update parameter changes are required.
+.
+
+--> If Target Oracle is 64-Bit, refer here for Update Parameters:
+-- No update parameter changes are required.
+.
+**********************************************************************
+Renamed Parameters: [Update Oracle Database 11.2 init.ora or spfile]
+**********************************************************************
+-- No renamed parameters found. No changes are required.
+.
+**********************************************************************
+Obsolete/Deprecated Parameters: [Update Oracle Database 11.2 init.ora or spfile]
+**********************************************************************
+--> plsql_native_library_dir     11.2       OBSOLETE
+--> plsql_native_library_subdir_ 11.2       OBSOLETE
+.
+
+**********************************************************************
+Components: [The following database components will be upgraded or installed]
+**********************************************************************
+--> Oracle Catalog Views         [upgrade]  VALID
+--> Oracle Packages and Types    [upgrade]  VALID
+--> JServer JAVA Virtual Machine [upgrade]  VALID
+--> Oracle XDK for Java          [upgrade]  VALID
+--> Real Application Clusters    [upgrade]  INVALID
+--> OLAP Analytic Workspace      [upgrade]  VALID
+--> OLAP Catalog                 [upgrade]  VALID
+--> Oracle Text                  [upgrade]  VALID
+--> Oracle XML Database          [upgrade]  VALID
+--> Oracle Java Packages         [upgrade]  VALID
+--> Oracle interMedia            [upgrade]  VALID
+--> Spatial                      [upgrade]  VALID
+--> Data Mining                  [upgrade]  VALID
+--> Oracle OLAP API              [upgrade]  VALID
+.
+**********************************************************************
+Miscellaneous Warnings
+**********************************************************************
+WARNING: --> Database is using a timezone file older than version 14.
+.... After the release migration, it is recommended that DBMS_DST package
+.... be used to upgrade the 11.1.0.7.0 database timezone version
+.... to the latest version which comes with the new release.
+WARNING: --> Your recycle bin contains 1617 object(s).
+.... It is REQUIRED that the recycle bin is empty prior to upgrading
+.... your database.  The command:
+        PURGE DBA_RECYCLEBIN
+.... must be executed immediately prior to executing your upgrade.
+WARNING: --> Database contains schemas with objects dependent on DBMS_LDAP package.
+.... Refer to the 11g Upgrade Guide for instructions to configure Network ACLs.
+.... USER APPS has dependent objects.
+.
+**********************************************************************
+Recommendations
+**********************************************************************
+Oracle recommends gathering dictionary statistics prior to
+upgrading the database.
+To gather dictionary statistics execute the following command
+while connected as SYSDBA:
+
+    EXECUTE dbms_stats.gather_dictionary_stats;
+
+**********************************************************************
+Oracle recommends removing all hidden parameters prior to upgrading.
+
+To view existing hidden parameters execute the following command
+while connected AS SYSDBA:
+
+    SELECT name,description from SYS.V$PARAMETER WHERE name LIKE '\_%' ESCAPE '\';
+
+Changes will need to be made in the init.ora or spfile.
+
+**********************************************************************
+Oracle recommends reviewing any defined events prior to upgrading.
+
+To view existing non-default events execute the following commands
+while connected AS SYSDBA:
+  Events:
+    SELECT (translate(value,chr(13)||chr(10),' ')) FROM sys.v$parameter2
+      WHERE  UPPER(name) ='EVENT' AND  isdefault='FALSE'
+
+  Trace Events:
+    SELECT (translate(value,chr(13)||chr(10),' ')) from sys.v$parameter2
+      WHERE UPPER(name) = '_TRACE_EVENTS' AND isdefault='FALSE'
+
+Changes will need to be made in the init.ora or spfile.
+
+**********************************************************************
+The DMSYS schema exists in the database.  Prior to performing an
+upgrade Oracle recommends that the DMSYS schema, and its associated
+objects be removed from the database.
+
+Refer to the Oracle Data Mining Administration Guide for the
+instructions on how to perform this task.
+
+**********************************************************************
+===============================================================================================================================
+ISSUE:
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+WARNING: --> SYSAUX tablespace is not large enough for the upgrade.
+.... currently allocated size: 472 MB
+.... minimum required size: 510 MB
+.... increase current size by: 38 MB
+.... tablespace is NOT AUTOEXTEND ENABLED.
+FIX:
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+SQL> alter tablespace SYSAUX add datafile '/d01/oracle/rgolovko/db/apps_st/data/sysaux03.dbf' size 500M autoextend on maxsize unlimited;
+
+Tablespace altered.
+
+
+ISSUE:
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+--> plsql_native_library_dir     11.2       OBSOLETE
+--> plsql_native_library_subdir_ 11.2       OBSOLETE
+
+FIX:
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+I commented out values below in init file:
+
+#plsql_native_library_dir = /d01/oracle/rgolovko/db/tech_st/11.1.0/plsql/nativelib 
+#plsql_native_library_subdir_count = 149
+
+ISSUE:
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+WARNING: --> Database is using a timezone file older than version 14.
+.... After the release migration, it is recommended that DBMS_DST package
+.... be used to upgrade the 11.1.0.7.0 database timezone version
+.... to the latest version which comes with the new release.
+
+SKIPPED:
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Upgrade to 11.2.0.3. No need to apply DST patches on the 11.1.0.6 or 11.1.0.7 side first. You can skip any DST related upgrade instructions.
+
+The 11.2.0.3 RDBMS DST version after the upgrade to 11.2.0.3 will be the same DST version as used in 11.1.0.6 or 11.1.0.7.
+
+
+ISSUE:
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+WARNING: --> Your recycle bin contains 1617 object(s).
+.... It is REQUIRED that the recycle bin is empty prior to upgrading
+.... your database.  The command:
+        PURGE DBA_RECYCLEBIN
+.... must be executed immediately prior to executing your upgrade.
+
+FIX:
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+SQL> PURGE DBA_RECYCLEBIN;
+
+DBA Recyclebin purged.
+
+
+ISSUE:
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Oracle recommends gathering dictionary statistics prior to
+upgrading the database.
+To gather dictionary statistics execute the following command
+while connected as SYSDBA:
+
+FIX:
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+EXECUTE dbms_stats.gather_dictionary_stats;
+
+PL/SQL procedure successfully completed.
+
+
+ISSUE:
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Oracle recommends removing all hidden parameters prior to upgrading.
+
+To view existing hidden parameters execute the following command
+while connected AS SYSDBA:
+
+    SELECT name,description from SYS.V$PARAMETER WHERE name LIKE '\_%' ESCAPE '\';
+
+Changes will need to be made in the init.ora or spfile.
+
+FIX:
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+I commented out all hidden variables in init file
+
+_system_trig_enabled
+are system triggers enabled
+
+_sort_elimination_cost_ratio
+cost ratio for sort eimination under first_rows mode
+
+_b_tree_bitmap_plans
+enable the use of bitmap plans for tables w. only B-tree indexes
+
+_fast_full_scan_enabled
+enable/disable index fast full scan
+
+_index_join_enabled
+enable the use of index joins
+
+_sqlexec_progression_cost
+sql execution progression monitoring cost threshold
+
+_like_with_bind_as_equality
+treat LIKE predicate with bind as an equality predicate
+
+_optimizer_autostats_job
+enable/disable auto stats collection job 
+
+_trace_files_public
+Create publicly accessible trace files
+
+===============================================================================================================================
+Create custom table:
+=====================================
+
+SQL> create table my_tab (BU_DATE DATE);
+
+Table created.
+
+SQL> insert into my_tab BU_DATE values (sysdate);
+
+1 row created.
+
+SQL> commit;
+
+Commit complete.
+
+SQL> select * from my_tab;
+
+BU_DATE
+---------
+02-AUG-13
+===============================================================================================================================
+Script to Collect DB Upgrade/Migrate Diagnostic Information (dbupgdiag.sql) (Doc ID 556610.1)
+Downloaded in $ORACLE_HOME/rdbms/admin/ - 11.1.0.7
+
+SQL> @?/rdbms/admin/dbupgdiag.sql
+Otput dir: /tmp
+
+[oracle@hlvk-prd ~]$ vi /tmp/db_upg_diag_RGOLOVKO_07_Aug_2013_0619.log
+
+count of dublicate objects = 6. 
+Metalink note: 1030426.6
+~~~~~~~~~~~~~~~~~~~~~~~~
+set pause off
+set heading off
+set pagesize 0
+set feedback off
+set verify off
+spool dropsys.sql
+select 'DROP ' || object_type || ' SYSTEM.' || object_name || ';'
+from dba_objects
+where object_name||object_type in
+   (select object_name||object_type  
+    from dba_objects
+    where owner = 'SYS')
+and owner = 'SYSTEM';
+spool off
+exit 
+~~~~~~~~~~~~~~~~~~~~~~~~~
+SQL> @dropsys.sql
+~~~~~~~~~~~~~~~~~~~~~~~~~
+SQL> column object_name format a30
+select object_name, object_type
+from dba_objects
+where object_name||object_type in
+   (select object_name||object_type  
+    from dba_objects
+    where owner = 'SYS')
+and owner = 'SYSTEM';   
+~~~~~~~~~~~~~~~~~~~~~~~~~
+no rows selected
+
+
+
+====================================================================
+SQL> create spfile from pfile;
+
+SQL> shu immediate;
+
+SQL> startup mount;
+
+SQL> alter database archivelog;
+
+Database altered.
+
+SQL> alter database open;
+
+Database altered.
+
+SQL> select log_mode from v$database;
+
+LOG_MODE
+------------
+ARCHIVELOG
+
+Take backup
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+[oracle@hlvk-prd ~]$ mkdir -p /d01/oracle/rgolovko/DB_RGOLOVKO/$(date '+%y_%m_%d')
+[oracle@hlvk-prd ~]$ rman target /
+RMAN> run
+RMAN> {
+RMAN> sql 'ALTER SYSTEM ARCHIVE LOG CURRENT';
+RMAN> configure device type disk parallelism 4;
+RMAN> allocate channel channel_1 type disk format '/d01/oracle/rgolovko/DB_RGOLOVKO/13_08_08/NAME:%d-RMAN(%t-%s_%U)';
+RMAN> allocate channel channel_2 type disk format '/d01/oracle/rgolovko/DB_RGOLOVKO/13_08_08/NAME:%d-RMAN(%t-%s_%U)';
+RMAN> allocate channel channel_3 type disk format '/d01/oracle/rgolovko/DB_RGOLOVKO/13_08_08/NAME:%d-RMAN(%t-%s_%U)';
+RMAN> allocate channel channel_4 type disk format '/d01/oracle/rgolovko/DB_RGOLOVKO/13_08_08/NAME:%d-RMAN(%t-%s_%U)';
+RMAN> backup incremental level 0 database include current controlfile spfile plus archivelog tag='BACKUP_RGOLOVKO_rman_lvl0';
+RMAN> delete noprompt archivelog all;
+RMAN> release channel channel_1;
+RMAN> release channel channel_2;
+RMAN> release channel channel_3;
+RMAN> release channel channel_4;
+RMAN> delete obsolete recovery window of 14 days;
+RMAN> }
+
+
+
+=======================================
+
+Timezone / NLS:
+----------------------------------------------
+SQL> select TZ_VERSION from registry$database;
+
+TZ_VERSION
+----------
+        10
+
+SQL> select value from NLS_DATABASE_PARAMETERS where parameter = 'NLS_NCHAR_CHARACTERSET';
+
+VALUE
+----------------------------------------
+AL16UTF16
+=======================================
+
+Check database vault:
+----------------------------------------------------------------------
+SQL> SELECT * FROM V$OPTION WHERE PARAMETER = 'Oracle Database Vault';
+
+PARAMETER
+----------------------------------------------------------------
+VALUE
+----------------------------------------------------------------
+Oracle Database Vault
+FALSE
+
+Check any logical corruptions:
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+set verify off
+set space 0
+set line 120
+set heading off
+set feedback off
+set pages 1000
+spool analyze.sql
+SELECT 'Analyze cluster "'||cluster_name||'" validate structure cascade;' FROM dba_clusters WHERE owner='SYS'
+UNION SELECT 'Analyze table "'||table_name||'" validate structure cascade;' FROM dba_tables
+WHERE owner='SYS' AND partitioned='NO' AND (iot_type='IOT' OR iot_type is NULL)
+UNION SELECT 'Analyze table "'||table_name||'" validate structure cascade into invalid_rows;' FROM dba_tables
+WHERE owner='SYS' AND partitioned='YES';
+spool off
+
+SQL> @$ORACLE_HOME/rdbms/admin/utlvalid.sql
+
+Table created.
+
+SQL> @analyze.sql
+
+Cluster analyzed.
+ . . .
+
+Table analyzed.
+
+
+
+Ensure that all snapshot refreshes are successfully completed
+--------------------------------------------------------------------
+SELECT DISTINCT(TRUNC(last_refresh))FROM dba_snapshot_refresh_times;
+(TRUNC(LA
+---------
+22-OCT-07
+30-MAR-09
+30-AUG-01
+21-JAN-08
+20-MAR-02
+05-AUG-13
+27-OCT-04
+04-JAN-07
+06-NOV-08
+
+9 rows selected.
+
+Ensure that no files need media recovery and that no files are in backup mode
+-------------------------------------------
+SQL> SELECT * FROM v$recover_file;
+
+no rows selected
+
+SQL> SELECT * FROM v$backup WHERE status != 'NOT ACTIVE';
+
+no rows selected
+
+Disable all batch and cron jobs
+=====================================
+set linesize 120
+set pagesize 120
+column spid heading 'OSpid' format a8
+column pid heading 'Orapid' format 999999
+column sid heading 'Sess id' format 99999
+column serial# heading 'Serial#' format 999999
+column status heading 'Status' format a8
+column pga_alloc_mem heading 'PGA alloc'
+column username heading 'oracleuser' format a12
+column osuser heading 'OS user' format a12
+column program heading 'Program' format a28
+SELECT
+p.spid,
+p.pid,
+s.sid,
+s.serial#,
+s.status,
+p.pga_alloc_mem,
+s.username,
+s.osuser,
+s.program
+FROM
+v$process p,
+v$session s
+WHERE s.paddr(+) = p.addr
+Order by p.pga_alloc_mem desc;
+
+OSpid     Orapid Sess id Serial# Status    PGA alloc oracleuser   OS user      Program
+-------- ------- ------- ------- -------- ---------- ------------ ------------ ----------------------------
+5632          10     391       1 ACTIVE     26496418              oracle       oracle@hlvk-prd (LGWR)
+5710          20     380       1 ACTIVE     23219618              oracle       oracle@hlvk-prd (ARC3)
+5698          17     383       5 ACTIVE     23219618              oracle       oracle@hlvk-prd (ARC0)
+5702          18     382       2 ACTIVE     23219618              oracle       oracle@hlvk-prd (ARC1)
+5706          19     381       1 ACTIVE     23219618              oracle       oracle@hlvk-prd (ARC2)
+5628           9     392       1 ACTIVE      6916942              oracle       oracle@hlvk-prd (DBW0)
+5714          21     376       1 ACTIVE      5770014              oracle       oracle@hlvk-prd (FBDA)
+19974         23     400     105 ACTIVE      5533190 SYS          oracle       sqlplus@hlvk-prd (TNS V1-V3)
+5636          11     390       1 ACTIVE      4901778              oracle       oracle@hlvk-prd (CKPT)
+5640          12     389       1 ACTIVE      4738466              oracle       oracle@hlvk-prd (SMON)
+5648          14     387       1 ACTIVE      3345182              oracle       oracle@hlvk-prd (MMON)
+5620           7     394       1 ACTIVE      2165534              oracle       oracle@hlvk-prd (DIA0)
+5644          13     388       1 ACTIVE      1265058              oracle       oracle@hlvk-prd (RECO)
+5758          25     374       4 ACTIVE      1002914              oracle       oracle@hlvk-prd (q001)
+5754          24     384      10 ACTIVE       871842              oracle       oracle@hlvk-prd (q000)
+5612           5     396       1 ACTIVE       871842              oracle       oracle@hlvk-prd (DBRM)
+20881         16     367     126 ACTIVE       871842              oracle       oracle@hlvk-prd (W000)
+5722          22     378       8 ACTIVE       740770              oracle       oracle@hlvk-prd (QMNC)
+5598           2     399       1 ACTIVE       675234              oracle       oracle@hlvk-prd (PMON)
+5602           3     398       1 ACTIVE       675234              oracle       oracle@hlvk-prd (VKTM)
+5608           4     397       1 ACTIVE       675234              oracle       oracle@hlvk-prd (DIAG)
+5821          26     368      11 ACTIVE       675234              oracle       oracle@hlvk-prd (SMCO)
+5624           8     393       1 ACTIVE       675234              oracle       oracle@hlvk-prd (MMAN)
+5652          15     386       1 ACTIVE       675234              oracle       oracle@hlvk-prd (MMNL)
+5616           6     395       1 ACTIVE       675234              oracle       oracle@hlvk-prd (PSP0)
+               1                                   0
+
+26 rows selected.
+
+No jobs to disable.
+
+Check SYS and SYSTEM  tablespace and check AUD$ table
+============================================================
+SQL> SELECT username, default_tablespace FROM dba_users WHERE username in ('SYS','SYSTEM');
+
+oracleuser   DEFAULT_TABLESPACE
+------------ ------------------------------
+SYSTEM       SYSTEM
+SYS          SYSTEM
+
+
+
+SQL> SELECT owner,tablespace_name FROM dba_tables WHERE table_name='AUD$';
+
+OWNER                          TABLESPACE_NAME
+------------------------------ ------------------------------
+SYS                            SYSTEM
+
+
+
+No need to truncate this audite table per note:  1329590.1
+
+~~~~~~~~~~~~~~~~~~~~~
+SELECT count(*) FROM sys.aud$ WHERE dbid is null
+
+  COUNT(*)
+----------
+         0
+
+
+SELECT name FROM sys.user$ WHERE ext_username IS NOT NULL AND password = 'GLOBAL';
+
+
+
+Check pfile for obsoleted parameters:
+egrep -i 'DRS_START|GC_FILES_TO_LOCKS|MAX_COMMIT_PROPAGATION_DELAY|PLSQL_NATIVE_LIBRARY_DIR|PLSQL_NATIVE_LIBRARY_SUBDIR_COUNT|SQL_VERSION' /d01/oracle/rgolovko/db/tech_st/11.1.0/dbs/initRGOLOVKO.ora 
+#       NATIVE and the parameter (plsql_native_library_dir) should
+#plsql_native_library_dir = /d01/oracle/rgolovko/db/tech_st/11.1.0/plsql/nativelib 
+#plsql_native_library_subdir_count = 149
+
+All obsoleted parameters are commented out. 
+
+
+======================================================================================
+  				UPGRADE DATABASE STEPS:
+======================================================================================
+
+Check for duplicate objects owned by SYS/SYSTEM:
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+How to Clean Up Duplicate Objects Owned by SYS and SYSTEM Schema (Doc ID 1030426.6)	
+
+column object_name format a30
+select object_name, object_type from dba_objects where object_name||object_type in (select object_name||object_type from dba_objects where owner = 'SYS') and owner = 'SYSTEM';
+
+no rows selected
+
+Stop listener and database 11.1.0.7:
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+[oracle@hlvk-prd data]$ lsnrctl stop $ORACLE_SID
+[oracle@hlvk-prd data]$ sqlplus / as sysdba
+
+SQL*Plus: Release 11.1.0.7.0 - Production on Thu Aug 8 23:55:48 2013
+
+Copyright (c) 1982, 2008, Oracle.  All rights reserved.
+
+
+Connected to:
+Oracle Database 11g Enterprise Edition Release 11.1.0.7.0 - Production
+With the Partitioning, OLAP, Data Mining and Real Application Testing options
+
+SQL> shu immediate;
+
+Copy parameter file from 11.1.0.7 to 11.2.0.2
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+cp /d01/oracle/rgolovko/db/tech_st/11.1.0/dbs/initRGOLOVKO.ora /d01/oracle/rgolovko/db/tech_st/11.2.0/dbs/
+
+
+Create nls/data/9idata directory on new 11.2.0.2 home
+-----------------------------------------------------
+[oracle@hlvk-prd ~]$ perl $ORACLE_HOME/nls/data/old/cr9idata.pl 
+
+Creating directory /d01/oracle/rgolovko/db/tech_st/11.2.0/nls/data/9idata ...
+Copying files to /d01/oracle/rgolovko/db/tech_st/11.2.0/nls/data/9idata...
+Copy finished. 
+Please reset environment variable ORA_NLS10 to /d01/oracle/rgolovko/db/tech_st/11.2.0/nls/data/9idata!
+
+[oracle@hlvk-prd ~]$ export ORA_NLS10=/d01/oracle/rgolovko/db/tech_st/11.2.0/nls/data/9idata
+
+
+Set new enviroment parameter variable:
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+export ORACLE_BASE='/d01/oracle/rgolovko/'
+export ORACLE_HOME='/d01/oracle/rgolovko/db/tech_st/11.2.0'
+export PATH=$ORACLE_HOME/bin:$ORACLE_HOME/perl/bin:$PATH
+export LD_LIBRARY_PATH=$ORACLE_HOME/lib
+export PERL5LIB=$ORACLE_HOME/perl/lib/5.10.0:$ORACLE_HOME/perl/lib/site_perl/5.10.0
+
+
+Update the oratab entry
+===============================================
+
+#RGOLOVKO:/d01/oracle/rgolovko/db/tech_st/11.1.0:N
+RGOLOVKO:/d01/oracle/rgolovko/db/tech_st/11.2.0:N
+
+Run upgrade sript:
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+[oracle@hlvk-prd ~]$ export ORACLE_SID=RGOLOVKO
+[oracle@hlvk-prd ~]$ cd $ORACLE_HOME/rdbms/admin
+[oracle@hlvk-prd admin]$ sqlplus / as sysdba
+
+SQL*Plus: Release 11.2.0.2.0 Production on Fri Aug 9 00:09:41 2013
+
+Copyright (c) 1982, 2010, Oracle.  All rights reserved.
+
+Connected to an idle instance.
+
+SQL> startup upgrade;
+ORACLE instance started.
+
+Total System Global Area 1071333376 bytes
+Fixed Size                  1348968 bytes
+Variable Size             427821720 bytes
+Database Buffers          629145600 bytes
+Redo Buffers               13017088 bytes
+Database mounted.
+Database opened.
+SQL> set echo on
+SQL> spool /home/oracle/UPGRADE_DB.log
+SQL> @catupgrd.sql
+SQL>spool off
+SQL> exit
+
+Check upgrade log:
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+egrep -i 'ora-|sp2-' /home/oracle/UPGRADE_DB.log
+No errors, only commented out description.
+
+
+SQL> startup
+ORACLE instance started.
+
+Total System Global Area 1071333376 bytes
+Fixed Size                  1348968 bytes
+Variable Size             427821720 bytes
+Database Buffers          629145600 bytes
+Redo Buffers               13017088 bytes
+Database mounted.
+Database opened.
+SQL> select banner from v$version;
+
+BANNER
+--------------------------------------------------------------------------------
+Oracle Database 11g Enterprise Edition Release 11.2.0.2.0 - Production
+PL/SQL Release 11.2.0.2.0 - Production
+CORE    11.2.0.2.0      Production
+TNS for Linux: Version 11.2.0.2.0 - Production
+NLSRTL Version 11.2.0.2.0 - Production
+
+
+Run utlu112s.sql script
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+SQL> @utlu112s.sql
+
+Oracle Database 11.2 Post-Upgrade Status Tool           08-09-2013 08:39:02
+
+Component                                Status         Version  HH:MM:SS
+
+Oracle Server
+.                                         VALID      11.2.0.2.0  00:21:17
+JServer JAVA Virtual Machine
+.                                         VALID      11.2.0.2.0  00:08:57
+Oracle Real Application Clusters
+.                                       INVALID      11.2.0.2.0  00:00:02
+OLAP Analytic Workspace
+.                                         VALID      11.2.0.2.0  00:00:45
+OLAP Catalog
+.                                         VALID      11.2.0.2.0  00:01:24
+Oracle OLAP API
+.                                         VALID      11.2.0.2.0  00:00:58
+Oracle XDK
+.                                         VALID      11.2.0.2.0  00:00:53
+Oracle Text
+.                                         VALID      11.2.0.2.0  00:01:44
+Oracle XML Database
+.                                         VALID      11.2.0.2.0  00:04:48
+Oracle Database Java Packages
+.                                         VALID      11.2.0.2.0  00:00:53
+Oracle Multimedia
+.                                         VALID      11.2.0.2.0  00:09:36
+Spatial
+.                                         VALID      11.2.0.2.0  00:10:45
+Gathering Statistics
+.                                                                00:17:20
+Total Upgrade Time: 01:19:32
+
+PL/SQL procedure successfully completed.
+
+
+Run catuppst.sql script.
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+This script will migrate the Baseline data on a pre-11g database
+to the 11g database.
+
+SQL> @catuppst.sql
+
+Check logs: no-errors.
+
+
+Run script dbupgdiag.sql
+Per metalink note:Note 556610.1  Script to Collect DB Upgrade/Migrate Diagnostic Information
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+SQL> select count(*) from dba_objects where status ='INVALID';    
+
+  COUNT(*)
+----------
+     59709
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+After running script 'utlrp.sql' 
+Left 42 invalid objects.
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+  COUNT(*)
+----------
+        42
+
+
+set lines 150 pages 500
+column COMP_NAME format a45
+column version format a15
+column status format a12
+select comp_name,version,status from dba_registry;
+
+COMP_NAME                                     VERSION         STATUS
+--------------------------------------------- --------------- ------------
+Oracle Data Mining                            11.2.0.2.0      VALID
+Oracle XML Database                           11.2.0.2.0      VALID
+OLAP Catalog                                  11.2.0.2.0      VALID
+Oracle Text                                   11.2.0.2.0      VALID
+Spatial                                       11.2.0.2.0      VALID
+Oracle Multimedia                             11.2.0.2.0      VALID
+Oracle Database Catalog Views                 11.2.0.2.0      VALID
+Oracle Database Packages and Types            11.2.0.2.0      VALID
+JServer JAVA Virtual Machine                  11.2.0.2.0      VALID
+Oracle Database Java Packages                 11.2.0.2.0      VALID
+Oracle XDK                                    11.2.0.2.0      VALID
+Oracle Real Application Clusters              11.2.0.2.0      INVALID
+OLAP Analytic Workspace                       11.2.0.2.0      VALID
+Oracle OLAP API                               11.2.0.2.0      VALID
+
+14 rows selected.
+
+
+======================================================================================
+				Post upgrade steps:
+======================================================================================
+
+Instal patch: Patch 13001379: DATAPUMP TRANSPORT_TABLESPACES PRODUCES WRONG METADATA FOR SOME TABLES
+
+[oracle@hlvk-prd 13001379]$ opatch apply
+
+Invoking OPatch 11.2.0.1.1
+
+Oracle Interim Patch Installer version 11.2.0.1.1
+Copyright (c) 2009, Oracle Corporation.  All rights reserved.
+
+
+Oracle Home       : /d01/oracle/rgolovko/db/tech_st/11.2.0
+Central Inventory : /d01/oracle/rgolovko/db/tech_st/11.2.0/orainventory
+   from           : /etc/oraInst.loc
+OPatch version    : 11.2.0.1.1
+OUI version       : 11.2.0.2.0
+OUI location      : /d01/oracle/rgolovko/db/tech_st/11.2.0/oui
+Log file location : /d01/oracle/rgolovko/db/tech_st/11.2.0/cfgtoollogs/opatch/opatch2013-08-09_21-19-19PM.log
+
+Verifying the update...
+Inventory check OK: Patch ID 13001379 is registered in Oracle Home inventory with proper meta-data.
+Files check OK: Files from Patch ID 13001379 are present in Oracle Home.
+
+OPatch succeeded.
+
+Configure and start the new database listener
+=============================================
+copy backed up files from old database and change pathes:
+
+cp -R /d01/oracle/rgolovko/db/tech_st/11.1.0/network/admin/RGOLOVKO_hlvk-prd/ /d01/oracle/rgolovko/db/tech_st/11.2.0/network/admin/
+
+cd /d01/oracle/rgolovko/db/tech_st/11.2.0/network/admin/RGOLOVKO_hlvk-prd/
+
+Using a regular expression like this ":%s~11.1.0~11.2.0~g" in "VI"-editor.
+
+[oracle@hlvk-prd RGOLOVKO_hlvk-prd]$ vi listener.ora 
+[oracle@hlvk-prd RGOLOVKO_hlvk-prd]$ vi sqlnet.ora
+[oracle@hlvk-prd RGOLOVKO_hlvk-prd]$ vi tnsnames.ora
+
+Run adgrants.sql
+==============================================
+Copy $APPL_TOP/admin/adgrants.sql from the applications server node to the database server node. Use SQL*Plus to connect to the database as SYSDBA and run the script using the following command:
+
+cp /d01/oracle/rgolovko/apps/apps_st/appl/admin/adgrants.sql $ORACLE_HOME/rdbms/admin/
+
+[oracle@hlvk-prd RGOLOVKO_hlvk-prd]$ sqlplus / as sysdba
+
+SQL*Plus: Release 11.2.0.2.0 Production on Fri Aug 9 21:35:44 2013
+
+Copyright (c) 1982, 2010, Oracle.  All rights reserved.
+
+Connected to an idle instance.
+
+SQL> startup
+ORACLE instance started.
+
+Total System Global Area 1071333376 bytes
+Fixed Size                  1348968 bytes
+Variable Size             427821720 bytes
+Database Buffers          629145600 bytes
+Redo Buffers               13017088 bytes
+Database mounted.
+Database opened.
+SQL> @?/rdbms/admin/adgrants.sql
+
+Grant create procedure privilege on CTXSYS
+===========================================
+[oracle@hlvk-prd RGOLOVKO_hlvk-prd]$ cp /d01/oracle/rgolovko/apps/apps_st/appl/ad/12.0.0/patch/115/sql/adctxprv.sql $ORACLE_HOME/rdbms/admin/
+
+Set CTXSYS parameter
+=======================
+SQL> exec ctxsys.ctx_adm.set_parameter('file_access_role', 'public');
+
+PL/SQL procedure successfully completed.
+
+
+Validate Workflow ruleset
+=========================
+cp /d01/oracle/rgolovko/apps/apps_st/appl/fnd/12.0.0/patch/115/sql/wfaqupfix.sql $ORACLE_HOME/rdbms/admin/
+
+[oracle@hlvk-prd admin]$ sqlplus apps/apps @wfaqupfix.sql \ APPLSYS APPS
+
+PL/SQL procedure successfully completed.
+
+Commit complete.
+
+
+Implement and run AutoConfig
+============================
+Under owner application tier in my case it's 'applmgr'
+
+[applmgr@hlvk-prd ~]$ perl $AD_TOP/bin/admkappsutil.pl
+Starting the generation of appsutil.zip
+Log file located at /d01/oracle/rgolovko/inst/apps/RGOLOVKO_hlvk-prd/admin/log/MakeAppsUtil_08092213.log
+output located at /d01/oracle/rgolovko/inst/apps/RGOLOVKO_hlvk-prd/admin/out/appsutil.zip
+MakeAppsUtil completed successfully.
+
+Copy and uncompress appsutil
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+[oracle@hlvk-prd admin]$ cp /d01/oracle/rgolovko/inst/apps/RGOLOVKO_hlvk-prd/admin/out/appsutil.zip $ORACLE_HOME/
+[oracle@hlvk-prd admin]$ cd $ORACLE_HOME
+[oracle@hlvk-prd 11.2.0]$ unzip -o appsutil.zip
+
+Generate the Database Context File
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+[oracle@hlvk-prd 11.2.0]$ cd appsutil/bin/
+[oracle@hlvk-prd bin]$ perl adbldxml.pl
+
+Starting context file generation for db tier..
+
+Enter Hostname of Database server: hlvk-prd
+
+Enter Port of Database server: 1521
+
+Enter SID of Database server: RGOLOVKO
+
+/d01/oracle/rgolovko/db/tech_st/11.2.0/appsutil/RGOLOVKO_hlvk-prd.xml
+
+Deregister the current database server (conditional):
+=====================================================
+[oracle@hlvk-prd bin]$ sqlplus apps/apps
+
+SQL> exec fnd_conc_clone.setup_clean;
+
+PL/SQL procedure successfully completed.
+
+
+
+Run autoconfig:
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+./adconfig.sh contextfile=/d01/oracle/rgolovko/db/tech_st/11.2.0/appsutil/RGOLOVKO_hlvk-prd.xml
+
+AutoConfig completed successfully
+
+[oracle@hlvk-prd ~]$ ln -s /d01/oracle/rgolovko/db/tech_st/11.2.0/RGOLOVKO_hlvk-prd.env
+
+
+Apply post-upgrade ECX apply patch 9151516.
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Enable maintenance mode.
+
+[applmgr@hlvk-prd 9151516]$ adpatch apply=yes
+
+[applmgr@hlvk-prd 9151516]$ egrep -i 'ora-|ac-|ap-|fail|warn|error' /d01/oracle/rgolovko/apps/apps_st/appl/admin/RGOLOVKO/log/adpatch.log
+
+   0 files had fatal errors.
+
+WARNING: Unable to load metadata entry from zip file /d01/oracle/rgolovko/apps/tech_st/10.1.2/forms/java/frmall.jar
+Cause: Error while trying to read metadata from file /d01/oracle/rgolovko/apps/tech_st/10.1.2/forms/java/frmall.jar: No metadata entry META-INF/JRIMETA.DAT found
+
+These warnings can be safely ignored.
+
+
+Gather statistics for SYS schema
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+[oracle@hlvk-prd ~]$ sqlplus / as sysdba
+
+SQL> alter system enable restricted session;
+
+System altered.
+
+SQL> @/d01/oracle/rgolovko/apps/apps_st/appl/admin/adstats.sql
+
+PL/SQL procedure successfully completed.
+
+SQL> alter system disable restricted session;
+
+
+
+Re-create grants and synonyms
+==============================
+[applmgr@hlvk-prd ~]$ adadmin
+	               L--> 4. Maintain Applications Database Entities menu
+		             L--> 2. Recreate grants and synonyms for APPS schema
+
+
+
+Compile Invalid Objects  
+==============================
+SQL>@utlrp.sql
+
+SQL> select OWNER,OBJECT_NAME,OBJECT_TYPE from dba_objects  where STATUS='INVALID';
+
+no rows selected
+
+
+Run autoconfig on Middle tier:
+==============================
+[applmgr@hlvk-prd ~]$ . APPSRGOLOVKO_hlvk-prd.env 
+[applmgr@hlvk-prd ~]$ cd $ADMIN_SCRIPTS_HOME 
+[applmgr@hlvk-prd scripts]$ ./adautocfg.sh 
+AutoConfig completed successfully.
+
+
+#appldmz@hlvk-dmz:/home/appldmz[]# . APPSRGOLOVKO_hlvk-dmz.env 
+#appldmz@hlvk-dmz:/home/appldmz[RGOLOVKO]# cd $ADMIN_SCRIPTS_HOME 
+#appldmz@hlvk-dmz:/ora/inst/apps/RGOLOVKO_hlvk-dmz/admin/scripts[RGOLOVKO]# ./adautocfg.sh 
+AutoConfig completed successfully.
+
+Need to decrease node trust level to external for dmz node again:
+================================
+
+
+Last step: Synchronize Workflow views
+=====================================
+Log on to Oracle E-Business Suite with the "System Administrator" responsibility. Click Requests > Run > Single Request and then OK button. Enter the following parameters:
+
+Request Name = Workflow Directory Services User/Role Validation
+p_BatchSize = 10000
+p_Check_Dangling = Yes
+Add missing user/role assignments = Yes
+Update WHO columns in WF tables = No
+
+The request 389341 - Workflow Directory Services User/Role Validation completed with status Normal.
+
+-------------------------------------------------
+Upgrade successfully completed. Screenshot-27.png
+-------------------------------------------------
+
+ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+<##########################################################################>
+<#			Upgrade applications to 12.1.3			  #>
+<##########################################################################>
+ vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+PPA:
+##########################################################################
+[-] 9239090 (3.4 GB) Patch 12.1.3: ORACLE E-BUSINESS SUITE 12.1.3 RELEASE UPDATE PACK
+	[-] 9239089 - (2.2 MB) - Patch R12.AD.B.delta.3: Oracle Applications DBA 12.1.3 Product Release Update Pack
+
+[-] 9239095 - (57.7 MB) - Oracle E-Business Suite Online Help for 12.1.3 Release Update Pack
+	[-] 9239090 (3.4 GB) Patch 12.1.3: ORACLE E-BUSINESS SUITE 12.1.3 RELEASE UPDATE PACK
+	
+[-] 9817770 - (1.3 MB) - POST-R12.ATG_PF.B.DELTA.3 CONSOLIDATED PATCH
+	
+	[-] 9239089 - (2.2 MB) - Patch R12.AD.B.delta.3: Oracle Applications DBA 12.1.3 Product Release Update Pack	
+	[-] 8919491 - (175.2 MB) - Patch R12.ATG_PF.B.delta.3: Oracle Applications Technology 12.1.3 Product Family Release UPDATE P
+		[-] 9239089 - (2.2 MB) - Patch R12.AD.B.delta.3: Oracle Applications DBA 12.1.3 Product Release Update Pack 
+	 
+[-] 9966055 -  (12.7 KB) - Patch 9966055: 1OFF:12.1.3:TRANSLATED VERSION OF FNDSCSGN NOT LAUNCHED
+	[-] 9239089 - (2.2 MB) - Patch R12.AD.B.delta.3: Oracle Applications DBA 12.1.3 Product Release Update Pack	
+	[-] 8919491 - (175.2 MB) - Patch R12.ATG_PF.B.delta.3: Oracle Applications Technology 12.1.3 Product Family Release UPDATE P
+
+
+##########################################################################
+
+9239089 - Patch R12.AD.B.delta.3: Oracle Applications DBA 12.1.3 Product Release Update Pack	
+==========================================================================
+Required patches:
+~~~~~~~~~~~~~~~~
+No patches to apply
+
+Pre-steps:
+~~~~~~~~~~~~~~~~
+Run the adgrants.sql script as a user that can connect as SYSDBA to grant privileges to selected SYS objects and create PL/SQL profiler objects.
+
+  Usage:
+
+  1. Create $ORACLE_HOME/appsutil/admin on the database server.
+
+  2. Copy adgrants.sql (UNIX) from this patch directory to
+     $ORACLE_HOME/appsutil/admin.
+     
+  3. Set the environment to point to ORACLE_HOME on the database server.
+
+  4. Use SQL*Plus to run the script:
+
+     UNIX:
+     $ sqlplus /nolog
+     SQL> @$ORACLE_HOME/appsutil/admin/adgrants.sql <APPS schema name>
+
+Apply patch:
+~~~~~~~~~~~~~~~~
+This patch contains the following unified driver file to be applied with
+AutoPatch:
+    u9239089.drv (This is the unified driver)
+
+Post-steps:
+~~~~~~~~~~~~~~~~
+There are no tasks to be performed.
+
+Note:
+~~~~~~~~~~~~~~~~
+Do not merge this patch with any other patch. R12.AD.B.Delta.3 must be applied separately
+
+
+9239090 (3.4 GB) Patch 12.1.3: ORACLE E-BUSINESS SUITE 12.1.3 RELEASE UPDATE PACK
+==========================================================================
+
+Required patches:
+~~~~~~~~~~~~~~~~
+[-] - 9239089
+
+Pre-install Tasks
+~~~~~~~~~~~~~~~~
+You must shut down all Application tier services before performing the tasks in this section.
+
+Apply patch:
+~~~~~~~~~~~~~~~~
+AutoPatch:
+    u9239090.drv (This is the unified driver)
+
+Post-steps:
+~~~~~~~~~~~~~~~~
+There are no tasks to be performed for Linux.
+
+9239095 - Oracle E-Business Suite Online Help for 12.1.3 Release Update Pack
+==========================================================================
+Required patches:
+~~~~~~~~~~~~~~~~
+[-] - 9239090
+
+Pre-install Tasks
+~~~~~~~~~~~~~~~~
+You must shut down all Application tier services before performing the tasks in this section.
+
+Apply patch:
+~~~~~~~~~~~~~~~~
+AutoPatch:
+    u9239095.drv (This is the unified driver)
+
+Post-steps:
+~~~~~~~~~~~~~~~~
+There are no tasks to be performed for Linux.
+
+8919491 -  Patch R12.ATG_PF.B.delta.3: Oracle Applications Technology 12.1.3 Product Family Release UP
+==========================================================================
+Required patches:
+~~~~~~~~~~~~~~~~
+[-] - 9239089
+
+Pre-install Tasks
+~~~~~~~~~~~~~~~~
+You must shut down all Application tier services before performing the tasks in this section.
+
+Apply patch:
+~~~~~~~~~~~~~~~~
+AutoPatch:
+    u8919491.drv (This is the unified driver)
+
+Post-steps:
+~~~~~~~~~~~~~~~~
+There are no tasks to be performed for Linux.
+
+9817770 (1.3 MB) - POST-R12.ATG_PF.B.DELTA.3 CONSOLIDATED PATCH
+==========================================================================
+
+Required patches:
+~~~~~~~~~~~~~~~~
+[-] - 9239089
+[-] - 8919491
+
+Pre-install Tasks
+~~~~~~~~~~~~~~~~
+No actions.
+
+Apply patch:
+~~~~~~~~~~~~~~~~
+AutoPatch:
+    u9817770.drv (This is the unified driver)
+
+Post-steps:
+~~~~~~~~~~~~~~~~
+No actions.
+
+
+9966055 -  (12.7 KB) - Patch 9966055: 1OFF:12.1.3:TRANSLATED VERSION OF FNDSCSGN NOT LAUNCHED
+==========================================================================
+Required patches:
+~~~~~~~~~~~~~~~~
+[-] - 9239089
+[-] - 8919491
+
+Pre-install Tasks
+~~~~~~~~~~~~~~~~
+You must shut down all Application tier services before performing the tasks in this section.
+
+Apply patch:
+~~~~~~~~~~~~~~~~
+AutoPatch:
+    u9966055.drv (This is the unified driver)
+
+Post-steps:
+~~~~~~~~~~~~~~~~
+This patch fixes an issue where the base language version of FNDSCSGN (navigator
+form) is launched instead of the version for the session language.
+
+Bounce the Apache after patch application.
+
+
+IMPORTANT NOTE:
+---------------
+ATG one-off patches do not go through independent Quality Assurance testing,
+and are not certified by Application products, hence there is some risk of
+unexpected side effects. If the fix in this patch is included in the latest
+released ATG Family Pack RUP or ATG_PF RUP has superseded the fix in this
+patch, then it is highly recommended to apply the ATG Family Pack (ATG_PF)
+RUP instead.
+
+
+
+Summary:
+##########################################################################
+9239089 (Size: 2.2 MB )  Patch R12.AD.B.delta.3: Oracle Applications DBA 12.1.3 Product Release Update Pack
+9239090 (Size: 3.4 GB )  Patch 12.1.3: ORACLE E-BUSINESS SUITE 12.1.3 RELEASE UPDATE PACK (cumulative)
+9239095 (Size: 57.7MB )  Oracle E-Business Suite Online Help for 12.1.3 Release Update Pack
+8919491 (Size: 175.2MB)  Patch R12.ATG_PF.B.delta.3: Oracle Applications Technology 12.1.3 Product Family Release UPDATE PACK
+9817770 (Size: 1.3 MB )  POST-R12.ATG_PF.B.DELTA.3 CONSOLIDATED PATCH
+9966055 (Size: 12.7KB )  1OFF:12.1.3:TRANSLATED VERSION OF FNDSCSGN NOT LAUNCHED
+
+java oracle.apps.per.DataInstall apps apps romdb01:1521:RGRPC 
+$PER_TOP/patch/115/driver/hrglobal.drv
+===============================================================
+Installing patches on hlvk-prd (main applications node):
+===============================================================
+
+Enable maintenace mode:
+on middle tier:
+sqlplus apps/apps @/d01/oracle/rgolovko/apps/apps_st/appl/ad/12.0.0/patch/115/sql/adsetmmd.sql ENABLE
+
+PL/SQL procedure successfully completed.
+
+Commit complete.
+
+Download and unzip patches into directory /patches/
+
+Instaling patch 9239089: Patch R12.AD.B.delta.3: Oracle Applications DBA 12.1.3 Product Release Update Pack
+~~~~~~~~~~~~~~~~~~~~~~~~
+[applmgr@hlvk-prd patches]$ cd 9239089/
+[applmgr@hlvk-prd 9239089]$ ls
+ad     b9239089.ldt  j9239089_ad.zip  patch_metadata.xml  README.txt
+admin  f9239089.ldt  marker1.txt      README.html         u9239089.drv
+[applmgr@hlvk-prd 9239089]$ cd admin/
+[applmgr@hlvk-prd admin]$ ls
+adgrants_nt.sql  adinvspb.pls  adsysapp2.sql  applIN.txt    applUK.txt
+adgrants.sql     adinvsps.pls  adUtilMap.txt  applterr.txt  file.drv
+
+Copy script "adgrants.sql" from uncompressed directory to appsutil/admin:
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+[oracle@hlvk-prd ~]$ cp /patches/9239089/admin/adgrants.sql $ORACLE_HOME/appsutil/admin/
+[oracle@hlvk-prd ~]$ cd $ORACLE_HOME/appsutil/admin/
+[oracle@hlvk-prd ~]$ sqlplus / as sysdba @adgrants.sql apps
+
+
+Applying patch:
+~~~~~~~~~~~~~~~~~~~~
+[applmgr@hlvk-prd 9239089]$ adpatch apply=yes
+[applmgr@hlvk-prd 9239089]$ egrep -i 'ora-|fail|ap-|ac-' /d01/oracle/rgolovko/apps/apps_st/appl/admin/RGOLOVKO/log/adpatch.log
+
+
+Instaling patch 9239090: Patch 12.1.3: ORACLE E-BUSINESS SUITE 12.1.3 RELEASE UPDATE PACK 
+~~~~~~~~~~~~~~~~~~~~~~~~
+After uncompress size of this patch was 9.4 GB.
+
+Instalation this patch took about 23 hours.
+
+[applmgr@hlvk-prd 9239090]$ grep -i 'ap-|ac-|error|ora-' /d01/oracle/rgolovko/apps/apps_st/appl/admin/RGOLOVKO/log/adpatch.log
+
+After applying current patch found 7 invalid objects.
+
+
+Installing patch 9239095 : Oracle E-Business Suite Online Help for 12.1.3 Release Update Pack:
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+[applmgr@hlvk-prd 9239095]$ adpatch apply=yes
+[applmgr@hlvk-prd 9239095]$ grep -i 'ap-|ac-|error|ora-' /d01/oracle/rgolovko/apps/apps_st/appl/admin/RGOLOVKO/log/adpatch.log
+
+
+Installing patch 8919491:  Patch R12.ATG_PF.B.delta.3: Oracle Applications Technology 12.1.3 Product Family Release UPDATE PACK
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+[applmgr@hlvk-prd 8919491]$ adpatch apply=yes
+[applmgr@hlvk-prd 8919491]$ grep -i 'ap-|ac-|error|ora-' /d01/oracle/rgolovko/apps/apps_st/appl/admin/RGOLOVKO/log/adpatch.log
+
+
+Installing patch 9817770: POST-R12.ATG_PF.B.DELTA.3 CONSOLIDATED PATCH
+~~~~~~~~~~~~~~~~~~~~~~~~~
+[applmgr@hlvk-prd 9817770]$ adpatch apply=yes
+[applmgr@hlvk-prd 9817770]$ grep -i 'ap-|ac-|error|ora-' /d01/oracle/rgolovko/apps/apps_st/appl/admin/RGOLOVKO/log/adpatch.log
+
+Installing patch 9966055:   1OFF:12.1.3:TRANSLATED VERSION OF FNDSCSGN NOT LAUNCHED
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+perl $AD_TOP/bin/admkappsutil.pl
+Starting the generation of appsutil.zip
+Log file located at /d01/oracle/rgolovko/inst/apps/RGOLOVKO_hlvk-prd/admin/log/MakeAppsUtil_08131057.log
+output located at /d01/oracle/rgolovko/inst/apps/RGOLOVKO_hlvk-prd/admin/out/appsutil.zip
+MakeAppsUtil completed successfully.
+
+[oracle@hlvk-prd ~]$ cp /d01/oracle/rgolovko/inst/apps/RGOLOVKO_hlvk-prd/admin/out/appsutil.zip $ORACLE_HOME/
+
+[oracle@hlvk-prd ~]$ cd $ORACLE_HOME 
+[oracle@hlvk-prd 11.2.0]$ unzip -o appsutil.zip
+
+Run autoconfig on both tiers:
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+[oracle@hlvk-prd RGOLOVKO_hlvk-prd]$ ./adautocfg.sh 
+
+
+set linesize 150;
+set pagesize 999;
+col "Database Version" format a72;
+col "Application version" format a32;
+select d.banner "Database Version", a.release_name "Application version" from v$version d, apps.fnd_product_groups a;
+
+
+Database Version                                                         Application version
+------------------------------------------------------------------------ ------------------------------
+Oracle Database 11g Enterprise Edition Release 11.2.0.2.0 - Production   12.1.3
+
+
+UPGRADE DMZ NODE
+#######################################################################
+Enable maintenace mode:
+
+sqlplus apps/apps @/ora/apps/apps_st/appl/ad/12.0.0/patch/115/sql/adsetmmd.sql ENABLE
+
+PL/SQL procedure successfully completed.
+
+Commit complete.
+
+I'm using shared directory "/patches" on hlvk-prd and hlvk-dmz :
+in hlvk-dmz it was mounted to /home/appldmz/patches.
+
+Instaling patch 9239089:
+~~~~~~~~~~~~~~~~~~~~~~~~
+I skipped pre-step "run adgrants.sql" because I had performed it on hlvk-prd.
+I think it is unnecessary to perform it here.
+
+Applying patch:
+~~~~~~~~~~~~~~~~~~~~
+#appldmz@hlvk-dmz:/home/appldmz/patches[RGOLOVKO]# cd 9239089/
+#appldmz@hlvk-dmz:/home/appldmz/patches/9239089[RGOLOVKO]# adpatch apply=yes
+#appldmz@hlvk-dmz:/home/appldmz/patches/9239089[RGOLOVKO]# egrep -i 'ora-|fail|ap-|ac-' /ora/apps/apps_st/appl/admin/RGOLOVKO/log/adpatch.log
+
+
+Instaling patch 9239090:
+~~~~~~~~~~~~~~~~~~~~~~~~
+After uncompress size of this patch was 9.4 GB.
+
+Instalation this patch took ~ 30 hours.
+Most of the time it took copping APPL_TOP by adpatch.
+Sometimes it seemed to me that adpatch hang, but the hard drive was used continuously
+During the copping the workers were not used that's why I couldn't control this process from adctrl.
+Maybe it's because I'm using USB-hard disk for storing my virtual disks from VM-Box.
+That's why process too slow.
+
+#appldmz@hlvk-dmz:/home/appldmz/patches/9239090[RGOLOVKO]# grep -i 'ap-|ac-|error|ora-' /ora/apps/apps_st/appl/admin/RGOLOVKO/log/adpatch.log
+
+After applying current patch found 17 invalid objects.
+
+
+Installing patch 9239095 : 
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#appldmz@hlvk-dmz:/home/appldmz/patches/9239095[RGOLOVKO]# adpatch apply=yes
+#appldmz@hlvk-dmz:/home/appldmz/patches/9239095[RGOLOVKO]# grep -i 'ap-|ac-|error|ora-' /ora/apps/apps_st/appl/admin/RGOLOVKO/log/adpatch.log
+
+
+Installing patch 8919491:
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#appldmz@hlvk-dmz:/home/appldmz/patches/8919491[RGOLOVKO]# adpatch apply=yes
+#appldmz@hlvk-dmz:/home/appldmz/patches/8919491[RGOLOVKO]# grep -i 'ap-|ac-|error|ora-' /ora/apps/apps_st/appl/admin/RGOLOVKO/log/adpatch.log
+
+
+Installing patch 9817770:
+~~~~~~~~~~~~~~~~~~~~~~~~~
+#appldmz@hlvk-dmz:/home/appldmz/patches/9817770[RGOLOVKO]# adpatch apply=yes
+#appldmz@hlvk-dmz:/home/appldmz/patches/9817770[RGOLOVKO]# grep -i 'ap-|ac-|error|ora-' /ora/apps/apps_st/appl/admin/RGOLOVKO/log/adpatch.log
+
+
+Installing patch 9966055:
+~~~~~~~~~~~~~~~~~~~~~~~~~
+#appldmz@hlvk-dmz:/home/appldmz/patches/9966055[RGOLOVKO]# adpatch apply=yes
+#appldmz@hlvk-dmz:/home/appldmz/patches/9966055[RGOLOVKO]# grep -i 'ap-|ac-|error|ora-' /ora/apps/apps_st/appl/admin/RGOLOVKO/log/adpatch.log
+
+post-step:
+~~~~~~~~~
+Bounce apache (but my application is down).
+
+######################################################################
+SUMMARY:
+######################################################################
+After upgrading main applications node and dmz-node, I faced error after completion autoconfig. 
+Autoconfig was completed with following error: 
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+AutoConfig could not successfully execute the following scripts:
+    Directory: /d01/oracle/rgolovko/inst/apps/RGOLOVKO_hlvk-prd/admin/install
+      jtfictx.sh              INSTE8_PRF         1
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Found on metalink that it isn't critical error and can be safely ignored.
+But I don't like any errors on my applications and I found that it was skipped step during the upgrade database. This step related only for EBS not to core upgrade database. I found same issue on oracle's forum "https://forums.oracle.com/thread/2534044"
+
+Fix:
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+I downloaded Examples CD form oracle.com:
+
+http://download.oracle.com/otn/linux/oracle11g/R2/linux_11gR2_examples.zip
+
+Then, uncompressed it: cd /d01/oracle/DISK/ORA_FILES/ && unzip linux_11gR2_examples.zip
+
+[oracle@hlvk-prd ORA_FILES]$ cd examples/stage/Components/oracle.ctx.companion/11.2.0.1.0/1/DataFiles
+[oracle@hlvk-prd DataFiles]$ ls
+filegroup10.jar  filegroup1.jar  filegroup4.jar  filegroup7.jar
+filegroup11.jar  filegroup2.jar  filegroup5.jar  filegroup8.jar
+filegroup12.jar  filegroup3.jar  filegroup6.jar  filegroup9.jar
+[oracle@hlvk-prd DataFiles]$ unzip filegroup1.jar
+Archive:  filegroup1.jar
+  inflating: ctx/data/enlx/drofdUS.dat  
+  inflating: ctx/data/enlx/drofiUS.dat  
+  inflating: ctx/data/enlx/droldUS.dat  
+  inflating: ctx/data/enlx/droliUS.dat  
+  inflating: ctx/data/enlx/drolkUS.dat  
+  inflating: ctx/data/enlx/drolsUS.dat  
+[oracle@hlvk-prd DataFiles]$ cd ctx/data/enlx/
+[oracle@hlvk-prd enlx]$ ls
+drofdUS.dat  drofiUS.dat  droldUS.dat  droliUS.dat  drolkUS.dat  drolsUS.dat
+[oracle@hlvk-prd enlx]$ cp * $ORACLE_HOME/ctx/data/enlx
+[oracle@hlvk-prd enlx]$ $ORACLE_HOME/appsutil/install/adlnkoh.sh
+
+Per metalink note: 372714.1 
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+[applmgr@hlvk-prd sql]$ sqlplus apps/apps @jtfiappr.sql APPS
+[applmgr@hlvk-prd sql]$ sqlplus apps/apps @jtfiaibu.sql JTF JTF APPS
+
+Autoconfig on DBtier
+Autoconfig on apps tier.
+~~~~~~~
+Autoconfig was completed without errors. Amount of invalid objects is 0.
+I believe that all actions were performed.
+Instance is up and running normaly.
+
+

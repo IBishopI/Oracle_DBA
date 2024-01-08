@@ -1,0 +1,5 @@
+#################################################################
+request ID by sid/serial
+#################################################################
+select request_id, from apps.fnd_concurrent_requests 
+where oracle_process_id = (select p.spid from v$process p,v$session s where s.paddr = p.addr and s.sid=&sid and s.serial#=&serial) group by request_id;
