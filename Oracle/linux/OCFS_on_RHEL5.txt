@@ -1,0 +1,79 @@
+Created custom disk on 8 GB for OCFS:
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+The latest version of ocfs for my kernel is 1.2.9, but I had to install 1.2.7 because ocfsconsole exist only 1.2.7 version for my kernel. 
+Donwloaded following packages on both nodes:
+ocfs2-2.6.18-53.el5-1.2.7-1.el5.i686.rpm
+ocfs2console-1.2.7-1.el5.i386.rpm
+ocfs2-tools-1.2.7-1.el5.i386.rpm
+
+From:
+https://oss.oracle.com/projects/ocfs2-tools/files/RedHat/RHEL5/i386/1.2.7-1/
+and
+https://oss.oracle.com/projects/ocfs2/files/RedHat/RHEL5/i386/old/1.2.7-1/2.6.18-53.1.4.el5/
+
+Installing packages:
+
+[root@racdb01 Desktop]# rpm -ivh ocfs2-2.6.18-53.el5-1.2.7-1.el5.i686.rpm ocfs2console-1.2.7-1.el5.i386.rpm ocfs2-tools-1.2.7-1.el5.i386.rpm ocfs2-tools-devel-1.2.7-1.el5.i386.rpm
+
+
+My cluster config on both nodes racdb01 and racdb02:
+
+mkdir /etc/ocfs2
+/etc/ocfs2/cluster.conf
+~~~~~~~~~~~~~~~~~~~~~~~
+cluster:
+        node_count = 2
+        name = rac-ebs
+
+node:
+        ip_port = 7777
+        ip_address = 192.168.50.171
+        number = 1
+        name = racdb01
+        cluster = rac-ebs
+node:
+        ip_port = 7777
+        ip_address = 192.168.50.172
+        number = 2
+        name = racdb02
+        cluster = rac-ebs
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+change cluster name from o2cb to rac-ebs in file /etc/sysconfig/o2cb
+>>>>
+O2CB_BOOTCLUSTER=rac-ebs
+<<<<
+
+On both nodes:
+
+[root@racdb02 ~]# service o2cb configure
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+Configuring the O2CB driver.
+
+This will configure the on-boot properties of the O2CB driver.
+The following questions will determine whether the driver is loaded on
+boot.  The current values will be shown in brackets ('[]').  Hitting
+<ENTER> without typing an answer will keep that current value.  Ctrl-C
+will abort.
+
+Load O2CB driver on boot (y/n) [y]: y
+Cluster to start on boot (Enter "none" to clear) [rac-ebs]: 
+Specify heartbeat dead threshold (>=7) [31]: 
+Specify network idle timeout in ms (>=5000) [30000]: 
+Specify network keepalive delay in ms (>=1000) [2000]: 
+Specify network reconnect delay in ms (>=2000) [2000]: 
+Writing O2CB configuration: OK
+Starting O2CB cluster rac-ebs: OK
+
+Creating file system:
+
+
+/dev/sdb1
+
+mkfs.ocfs2 -L "ora-VD-OCR" /dev/sdb1
+
+Add entry to /etc/fstab on both nodes
+/dev/sdb1 /rgolovko/voute ocfs2   _netdev,defaults 0 0
+
+re-read fstab:  mount -a
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
